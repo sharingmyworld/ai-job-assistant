@@ -5,20 +5,21 @@ from analyzer import analyze_cv
 from database import create_database, save_analysis, get_history
 from cv_improver import generate_suggestions
 from cv_generator import generate_cv_improvements
+from charts import show_skill_chart, show_found_skills_chart
 
 
 create_database()
 
 
 st.set_page_config(
-    page_title="AI Job Assistant v2.0",
+    page_title="AI Job Assistant",
     layout="wide"
 )
 
 
 st.title("🤖 AI Job Assistant")
 st.write(
-    "Analiza CV, dopasowanie do oferty i sugestie poprawy."
+    "Analiza dopasowania CV do oferty pracy."
 )
 
 
@@ -73,7 +74,9 @@ if st.button("🔍 Analizuj CV"):
 
         st.divider()
 
-        st.header("📊 Wynik analizy")
+        st.header(
+            "📊 Wynik analizy"
+        )
 
 
         col1, col2, col3 = st.columns(3)
@@ -111,6 +114,20 @@ if st.button("🔍 Analizuj CV"):
         st.divider()
 
 
+        show_skill_chart(
+            found,
+            missing
+        )
+
+
+        show_found_skills_chart(
+            found
+        )
+
+
+        st.divider()
+
+
         st.subheader(
             "✅ Znalezione umiejętności"
         )
@@ -119,6 +136,7 @@ if st.button("🔍 Analizuj CV"):
         if found:
 
             for skill in found:
+
                 st.write(
                     f"• {skill}"
                 )
@@ -138,6 +156,7 @@ if st.button("🔍 Analizuj CV"):
         if missing:
 
             for skill in missing:
+
                 st.write(
                     f"• {skill}"
                 )
@@ -163,10 +182,10 @@ if st.button("🔍 Analizuj CV"):
         )
 
 
-        for item in suggestions:
+        for suggestion in suggestions:
 
             st.write(
-                item
+                suggestion
             )
 
 
@@ -197,6 +216,7 @@ if st.button("🔍 Analizuj CV"):
         )
 
 
+
 st.divider()
 
 
@@ -218,5 +238,5 @@ if history:
 else:
 
     st.info(
-        "Brak historii."
+        "Brak zapisanych analiz."
     )
