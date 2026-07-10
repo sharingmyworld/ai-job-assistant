@@ -11,45 +11,51 @@ create_database()
 
 
 st.set_page_config(
-    page_title="AI Job Assistant",
+    page_title="AI Job Assistant v2.0",
     layout="wide"
 )
 
 
-st.title("AI Job Assistant")
-
+st.title("🤖 AI Job Assistant")
 st.write(
-    "Sprawdź dopasowanie CV do oferty pracy i otrzymaj propozycje ulepszeń."
+    "Analiza CV, dopasowanie do oferty i sugestie poprawy."
 )
 
 
 uploaded_file = st.file_uploader(
-    "Wgraj CV (PDF)",
+    "📄 Wgraj CV PDF",
     type=["pdf"]
 )
 
 
 job_offer = st.text_area(
-    "Wklej treść oferty pracy",
+    "💼 Wklej ofertę pracy",
     height=250
 )
 
 
-if st.button("Analizuj CV"):
+if st.button("🔍 Analizuj CV"):
 
     if uploaded_file is None:
 
-        st.warning("Najpierw wgraj CV.")
+        st.warning(
+            "Najpierw wgraj CV."
+        )
 
-    elif job_offer.strip() == "":
+    elif not job_offer.strip():
 
-        st.warning("Wklej ofertę pracy.")
+        st.warning(
+            "Wklej ofertę pracy."
+        )
 
     else:
 
-        with open("uploaded_cv.pdf", "wb") as file:
+        with open(
+            "uploaded_cv.pdf",
+            "wb"
+        ) as f:
 
-            file.write(
+            f.write(
                 uploaded_file.getbuffer()
             )
 
@@ -65,42 +71,80 @@ if st.button("Analizuj CV"):
         )
 
 
-        st.success(
-            f"Dopasowanie CV: {score:.0f}%"
+        st.divider()
+
+        st.header("📊 Wynik analizy")
+
+
+        col1, col2, col3 = st.columns(3)
+
+
+        with col1:
+
+            st.metric(
+                "Dopasowanie",
+                f"{score:.0f}%"
+            )
+
+
+        with col2:
+
+            st.metric(
+                "Znalezione",
+                len(found)
+            )
+
+
+        with col3:
+
+            st.metric(
+                "Brakujące",
+                len(missing)
+            )
+
+
+        st.progress(
+            score / 100
         )
 
 
         st.divider()
 
 
-        st.subheader("Znalezione umiejętności")
+        st.subheader(
+            "✅ Znalezione umiejętności"
+        )
+
 
         if found:
 
             for skill in found:
-                st.write(f"- {skill}")
+                st.write(
+                    f"• {skill}"
+                )
 
         else:
 
             st.write(
-                "Nie znaleziono wymaganych umiejętności."
+                "Brak znalezionych umiejętności."
             )
 
 
-        st.divider()
-
-
-        st.subheader("Brakujące umiejętności")
+        st.subheader(
+            "❌ Brakujące umiejętności"
+        )
 
 
         if missing:
 
             for skill in missing:
-                st.write(f"- {skill}")
+                st.write(
+                    f"• {skill}"
+                )
 
         else:
 
-            st.write(
+            st.success(
                 "Brak brakujących umiejętności."
             )
 
@@ -108,7 +152,9 @@ if st.button("Analizuj CV"):
         st.divider()
 
 
-        st.subheader("Sugestie poprawy CV")
+        st.subheader(
+            "💡 Sugestie poprawy CV"
+        )
 
 
         suggestions = generate_suggestions(
@@ -117,17 +163,19 @@ if st.button("Analizuj CV"):
         )
 
 
-        for suggestion in suggestions:
+        for item in suggestions:
 
             st.write(
-                suggestion
+                item
             )
 
 
         st.divider()
 
 
-        st.subheader("Generator ulepszenia CV")
+        st.subheader(
+            "✨ Generator ulepszenia CV"
+        )
 
 
         improvements = generate_cv_improvements(
@@ -152,7 +200,9 @@ if st.button("Analizuj CV"):
 st.divider()
 
 
-st.subheader("Historia analiz")
+st.header(
+    "📚 Historia analiz"
+)
 
 
 history = get_history()
@@ -160,14 +210,13 @@ history = get_history()
 
 if history:
 
-    for row in reversed(history):
-
-        st.write(
-            f"Data: {row[1]} | Wynik: {row[2]:.0f}% | Umiejętności: {row[3]}"
-        )
+    st.dataframe(
+        history,
+        use_container_width=True
+    )
 
 else:
 
     st.info(
-        "Brak zapisanych analiz."
+        "Brak historii."
     )
