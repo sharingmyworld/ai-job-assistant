@@ -6,7 +6,7 @@ from database import create_database, save_analysis, get_history
 from cv_improver import generate_suggestions
 from cv_generator import generate_cv_improvements
 from charts import show_skill_chart, show_found_skills_chart
-
+from report_generator import generate_report
 
 create_database()
 
@@ -180,63 +180,10 @@ if st.button("🔍 Analizuj CV"):
             found,
             missing
         )
-
-
         for suggestion in suggestions:
-
             st.write(
                 suggestion
             )
+        suggestion
+    
 
-
-        st.divider()
-
-
-        st.subheader(
-            "✨ Generator ulepszenia CV"
-        )
-
-
-        improvements = generate_cv_improvements(
-            found,
-            missing
-        )
-
-
-        for item in improvements:
-
-            st.write(
-                item
-            )
-
-
-        save_analysis(
-            score,
-            found
-        )
-
-
-
-st.divider()
-
-
-st.header(
-    "📚 Historia analiz"
-)
-
-
-history = get_history()
-
-
-if history:
-
-    st.dataframe(
-        history,
-        use_container_width=True
-    )
-
-else:
-
-    st.info(
-        "Brak zapisanych analiz."
-    )
