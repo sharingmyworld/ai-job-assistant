@@ -1,0 +1,5 @@
+
+Kandydat:
+Imię: Hier
+Stanowisko: dog
+Umiejętności: 0
