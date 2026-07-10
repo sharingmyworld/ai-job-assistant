@@ -1,4 +1,4 @@
-from skills import SKILLS_MAP
+from core.skills import SKILLS_MAP
 
 
 def analyze_cv(cv_text, job_offer):

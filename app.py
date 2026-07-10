@@ -1,7 +1,15 @@
+import sys
+import os
+
+sys.path.append(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+
 import streamlit as st
 
-from cv_reader import read_pdf
-from analyzer import analyze_cv
+from core.cv_reader import read_pdf
+from core.analyzer import analyze_cv
 from database import create_database, save_analysis, get_history
 from cv_improver import generate_suggestions
 from cv_generator import generate_cv_improvements
