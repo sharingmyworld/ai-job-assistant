@@ -15,7 +15,8 @@ from ats_report import generate_ats_report
 from database import (
     create_database,
     save_analysis,
-    get_history
+    get_history,
+    get_statistics
 )
 
 from report_generator import generate_report
@@ -166,10 +167,47 @@ if not st.session_state.logged_in:
 
     st.stop()
 
+stats = get_statistics(
+    st.session_state.username
+)
+
+
+count = stats[0] or 0
+average = stats[1] or 0
+best = stats[2] or 0
+
+st.header(
+    f"👋 Witaj {st.session_state.username}"
+)
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+
+    st.metric(
+        "Liczba analiz",
+        count
+    )
+
+with col2:
+
+    st.metric(
+        "Średni wynik",
+        f"{average:.1f}%"
+    )
+
+with col3:
+
+    st.metric(
+        "Najlepszy wynik",
+        f"{best:.1f}%"
+    )
+
+st.divider()
+
 st.write(
     "Porównaj swoje CV z ofertą pracy i sprawdź dopasowanie."
 )
-
 
 job_offer = st.text_area(
     "📄 Wklej ofertę pracy",
@@ -235,9 +273,10 @@ if analyze:
         )
 
         save_analysis(
+            st.session_state.username,
             score,
             found
-        )
+)
 
         st.session_state.analysis_done = True
         st.session_state.cv_text = cv_text
@@ -465,7 +504,9 @@ st.header(
     "📚 Historia analiz"
 )
 
-history = get_history()
+history = get_history(
+    st.session_state.username
+)
 
 if history:
 

@@ -12,10 +12,17 @@ def create_database():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS analyses (
+
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            username TEXT,
+
             date TEXT,
+
             score REAL,
+
             skills TEXT
+
         )
     """)
 
@@ -23,40 +30,103 @@ def create_database():
     connection.close()
 
 
-def save_analysis(score, skills):
+def save_analysis(
+    username,
+    score,
+    skills
+):
 
     connection = sqlite3.connect(DATABASE_NAME)
     cursor = connection.cursor()
 
     cursor.execute(
+
         """
-        INSERT INTO analyses (date, score, skills)
-        VALUES (?, ?, ?)
-        """,
+        INSERT INTO analyses
         (
-            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            username,
+            date,
             score,
-            ", ".join(skills)
+            skills
         )
+        VALUES (?, ?, ?, ?)
+        """,
+
+        (
+
+            username,
+
+            datetime.now().strftime(
+                "%Y-%m-%d %H:%M"
+            ),
+
+            score,
+
+            ", ".join(skills)
+
+        )
+
     )
 
     connection.commit()
     connection.close()
 
 
-def get_history():
+def get_history(username):
 
     connection = sqlite3.connect(DATABASE_NAME)
     cursor = connection.cursor()
 
-    cursor.execute("""
-        SELECT id, date, score, skills
+    cursor.execute(
+
+        """
+        SELECT
+            id,
+            date,
+            score,
+            skills
+
         FROM analyses
-        ORDER BY id ASC
-    """)
+
+        WHERE username=?
+
+        ORDER BY id DESC
+        """,
+
+        (
+            username,
+        )
+
+    )
 
     history = cursor.fetchall()
 
     connection.close()
 
     return history
+
+
+def get_statistics(username):
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*),
+            AVG(score),
+            MAX(score)
+        FROM analyses
+        WHERE username=?
+        """,
+        (
+            username,
+        )
+    )
+
+    result = cursor.fetchone()
+
+    connection.close()
+
+    return result
