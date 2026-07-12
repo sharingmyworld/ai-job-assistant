@@ -166,44 +166,48 @@ if not st.session_state.logged_in:
                     )
 
     st.stop()
+    
+    st.sidebar.title("👤 Konto")
+
+st.sidebar.success(
+    f"Zalogowany jako:\n\n{st.session_state.username}"
+)
+
+st.sidebar.divider()
+
+page = st.sidebar.radio(
+
+    "Menu",
+
+    [
+
+        "🏠 Dashboard",
+
+        "📄 Analiza CV",
+
+        "📚 Historia"
+
+    ]
+
+)
+
+st.sidebar.divider()
+
+if st.sidebar.button("🚪 Wyloguj się"):
+
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+
+    st.rerun()
 
 stats = get_statistics(
     st.session_state.username
 )
+if page == "🏠 Dashboard":
 
+    from views.dashboard import show_dashboard
 
-count = stats[0] or 0
-average = stats[1] or 0
-best = stats[2] or 0
-
-st.header(
-    f"👋 Witaj {st.session_state.username}"
-)
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-
-    st.metric(
-        "Liczba analiz",
-        count
-    )
-
-with col2:
-
-    st.metric(
-        "Średni wynik",
-        f"{average:.1f}%"
-    )
-
-with col3:
-
-    st.metric(
-        "Najlepszy wynik",
-        f"{best:.1f}%"
-    )
-
-st.divider()
+    show_dashboard()
 
 st.write(
     "Porównaj swoje CV z ofertą pracy i sprawdź dopasowanie."
