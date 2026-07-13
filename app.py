@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+
 
 from auth import (
     create_users_table,
@@ -16,7 +18,10 @@ from database import (
     create_database,
     save_analysis,
     get_history,
-    get_statistics
+    get_statistics,
+    get_progress,
+    delete_analysis,
+    get_better_than_percentage
 )
 
 from report_generator import generate_report
@@ -25,6 +30,8 @@ from charts import (
     show_skill_chart,
     show_found_skills_chart
 )
+
+from views.profile import show_profile
 
 
 st.set_page_config(
@@ -185,7 +192,9 @@ page = st.sidebar.radio(
 
         "📄 Analiza CV",
 
-        "📚 Historia"
+        "📚 Historia",
+
+        "👤 Profil"
 
     ]
 
@@ -209,8 +218,14 @@ if page == "🏠 Dashboard":
 
     show_dashboard()
 
+if page == "👤 Profil":
+
+    from views.profile import show_profile
+
+    show_profile()
+
 st.write(
-    "Porównaj swoje CV z ofertą pracy i sprawdź dopasowanie."
+    "Porównaj swoje CV z ofertą pracy..."
 )
 
 job_offer = st.text_area(
@@ -306,6 +321,11 @@ if st.session_state.analysis_done:
         "📊 Wynik analizy"
     )
 
+    better_than = get_better_than_percentage(
+        st.session_state.username,
+        score
+    )
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -332,6 +352,38 @@ if st.session_state.analysis_done:
     st.progress(
         score / 100
     )
+
+    st.subheader(
+        "🏆 Porównanie z poprzednimi analizami"
+    )
+
+    if better_than > 0:
+
+        st.success(
+            f"Ten wynik jest lepszy niż "
+            f"{better_than:.0f}% Twoich poprzednich analiz."
+        )
+
+    else:
+
+        history_count = len(
+            get_history(
+                st.session_state.username
+            )
+        )
+
+        if history_count <= 1:
+
+            st.info(
+                "To Twoja pierwsza analiza. "
+                "Ranking pojawi się po wykonaniu kolejnych analiz."
+            )
+
+        else:
+
+            st.info(
+                "Ten wynik nie jest wyższy od wcześniejszych wyników."
+            )
 
     st.divider()
 
@@ -514,23 +566,77 @@ history = get_history(
 
 if history:
 
+    df = pd.DataFrame(
+
+        history,
+
+        columns=[
+            "ID",
+            "Data",
+            "Wynik",
+            "Umiejętności"
+        ]
+
+    )
+
+    csv = df.to_csv(
+        index=False
+    ).encode("utf-8")
+
+    st.download_button(
+
+        "⬇ Pobierz historię CSV",
+
+        data=csv,
+
+        file_name=f"{st.session_state.username}_historia.csv",
+
+        mime="text/csv"
+
+    )
+
+    st.divider()
+
+if history:
+
     for row in reversed(history):
 
-        st.write(
-            f"📅 {row[1]}"
-        )
+        col1, col2 = st.columns([8, 1])
 
-        st.write(
-            f"📊 Dopasowanie: {row[2]:.0f}%"
-        )
-
-        if row[3]:
+        with col1:
 
             st.write(
-                f"🧩 Umiejętności: {row[3]}"
+                f"📅 {row[1]}"
             )
 
-        st.divider()
+            st.write(
+                f"📊 Dopasowanie: {row[2]:.0f}%"
+            )
+
+            if row[3]:
+
+                st.write(
+                    f"🧩 Umiejętności: {row[3]}"
+                )
+
+        with col2:
+
+            if st.button(
+                "🗑",
+                key=f"delete_{row[0]}"
+            ):
+
+                delete_analysis(
+                    row[0]
+                )
+
+                st.success(
+                    "Analiza została usunięta."
+                )
+
+                st.rerun()
+
+    st.divider()
 
 else:
 

@@ -1,6 +1,10 @@
 import streamlit as st
+import pandas as pd
 
-from database import get_statistics
+from database import (
+    get_statistics,
+    get_progress
+)
 
 
 def show_dashboard():
@@ -42,6 +46,30 @@ def show_dashboard():
         st.metric(
             "Najlepszy wynik",
             f"{best:.1f}%"
+        )
+
+    progress = get_progress(
+        st.session_state.username
+    )
+
+    if len(progress) > 1:
+
+        df = pd.DataFrame(
+            progress,
+            columns=[
+                "Data",
+                "Wynik"
+            ]
+        )
+
+        st.divider()
+
+        st.subheader(
+            "📈 Postęp analiz"
+        )
+
+        st.line_chart(
+            df.set_index("Data")
         )
 
     st.divider()

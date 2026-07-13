@@ -130,3 +130,96 @@ def get_statistics(username):
     connection.close()
 
     return result
+
+def get_progress(username):
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+
+        """
+        SELECT
+            date,
+            score
+
+        FROM analyses
+
+        WHERE username=?
+
+        ORDER BY id
+        """,
+
+        (
+            username,
+        )
+
+    )
+
+    data = cursor.fetchall()
+
+    connection.close()
+
+    return data
+
+def delete_analysis(analysis_id):
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+
+        """
+        DELETE FROM analyses
+        WHERE id=?
+        """,
+
+        (
+            analysis_id,
+        )
+
+    )
+
+    connection.commit()
+    connection.close()
+    
+def get_better_than_percentage(username, score):
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT score
+        FROM analyses
+        WHERE username=?
+        """,
+        (username,)
+    )
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    scores = [
+        row[0]
+        for row in rows
+    ]
+
+    if len(scores) <= 1:
+        return 0
+
+    previous_scores = scores[:-1]
+
+    better_count = sum(
+        1
+        for previous_score in previous_scores
+        if score > previous_score
+    )
+
+    percentage = (
+        better_count
+        / len(previous_scores)
+    ) * 100
+
+    return percentage

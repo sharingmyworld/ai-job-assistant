@@ -99,3 +99,43 @@ def login_user(username, password):
         row[0]
 
     )
+
+
+def change_password(username, current_password, new_password):
+
+    if not login_user(
+        username,
+        current_password
+    ):
+        return False, "Obecne hasło jest nieprawidłowe."
+
+    hashed_password = bcrypt.hashpw(
+        new_password.encode("utf-8"),
+        bcrypt.gensalt()
+    )
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET password=?
+        WHERE username=?
+        """,
+        (
+            hashed_password,
+            username
+        )
+    )
+
+    connection.commit()
+
+    updated_rows = cursor.rowcount
+
+    connection.close()
+
+    if updated_rows == 0:
+        return False, "Nie znaleziono użytkownika."
+
+    return True, "Hasło zostało zmienione."
