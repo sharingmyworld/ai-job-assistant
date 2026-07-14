@@ -423,3 +423,253 @@ def delete_learning_task(task_id):
 
     connection.commit()
     connection.close()
+
+
+
+def create_roadmap_progress_table():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS roadmap_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            skill TEXT NOT NULL,
+            step_number INTEGER NOT NULL,
+            completed INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            UNIQUE(username, skill, step_number)
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def get_roadmap_progress(username, skill):
+    create_roadmap_progress_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT step_number, completed
+        FROM roadmap_progress
+        WHERE username=? AND skill=?
+        """,
+        (username, skill)
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return {
+        row[0]: bool(row[1])
+        for row in rows
+    }
+
+
+def update_roadmap_step(
+    username,
+    skill,
+    step_number,
+    completed
+):
+    create_roadmap_progress_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO roadmap_progress
+        (
+            username,
+            skill,
+            step_number,
+            completed,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(username, skill, step_number)
+        DO UPDATE SET
+            completed=excluded.completed,
+            updated_at=excluded.updated_at
+        """,
+        (
+            username,
+            skill,
+            step_number,
+            int(completed),
+            datetime.now().strftime("%Y-%m-%d %H:%M")
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+
+def update_learning_status_by_skill(
+    username,
+    skill,
+    status
+):
+    allowed_statuses = {
+        "Do nauki",
+        "W trakcie",
+        "Ukończone"
+    }
+
+    if status not in allowed_statuses:
+        return
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE learning_plan
+        SET status=?, updated_at=?
+        WHERE username=? AND skill=?
+        """,
+        (
+            status,
+            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            username,
+            skill
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+
+def create_weekly_goal_table():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS weekly_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            target_steps INTEGER NOT NULL DEFAULT 5,
+            start_completed_steps INTEGER NOT NULL DEFAULT 0,
+            deadline TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def get_total_completed_roadmap_steps(username):
+    create_roadmap_progress_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM roadmap_progress
+        WHERE username=? AND completed=1
+        """,
+        (username,)
+    )
+
+    result = cursor.fetchone()
+    connection.close()
+
+    return result[0] or 0
+
+
+def save_weekly_goal(
+    username,
+    target_steps,
+    deadline
+):
+    create_weekly_goal_table()
+
+    start_completed = (
+        get_total_completed_roadmap_steps(username)
+    )
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO weekly_goals
+        (
+            username,
+            target_steps,
+            start_completed_steps,
+            deadline,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(username)
+        DO UPDATE SET
+            target_steps=excluded.target_steps,
+            start_completed_steps=excluded.start_completed_steps,
+            deadline=excluded.deadline,
+            created_at=excluded.created_at
+        """,
+        (
+            username,
+            int(target_steps),
+            start_completed,
+            deadline,
+            datetime.now().strftime("%Y-%m-%d %H:%M")
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_weekly_goal(username):
+    create_weekly_goal_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            target_steps,
+            start_completed_steps,
+            deadline,
+            created_at
+        FROM weekly_goals
+        WHERE username=?
+        """,
+        (username,)
+    )
+
+    row = cursor.fetchone()
+    connection.close()
+
+    return row
+
+
+def delete_weekly_goal(username):
+    create_weekly_goal_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        DELETE FROM weekly_goals
+        WHERE username=?
+        """,
+        (username,)
+    )
+
+    connection.commit()
+    connection.close()

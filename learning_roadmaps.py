@@ -1,0 +1,121 @@
+ROADMAPS = {
+    "python": [
+        "Składnia, zmienne i typy danych",
+        "Instrukcje warunkowe i pętle",
+        "Funkcje i moduły",
+        "Listy, słowniki, zbiory i krotki",
+        "Obsługa plików i wyjątków",
+        "Programowanie obiektowe",
+        "Virtual environment i pip",
+        "Testy jednostkowe",
+        "Projekt praktyczny w Pythonie",
+    ],
+    "sql": [
+        "SELECT, WHERE i ORDER BY",
+        "INSERT, UPDATE i DELETE",
+        "Funkcje agregujące",
+        "GROUP BY i HAVING",
+        "JOIN",
+        "Podzapytania",
+        "CTE i funkcje okienkowe",
+        "Indeksy i podstawy optymalizacji",
+        "Projekt bazy danych",
+    ],
+    "docker": [
+        "Kontenery i obrazy",
+        "Podstawowe komendy Docker CLI",
+        "Tworzenie Dockerfile",
+        "Warstwy i cache obrazów",
+        "Volumes",
+        "Networking",
+        "Docker Compose",
+        "Zmienne środowiskowe i sekrety",
+        "Konteneryzacja własnego projektu",
+    ],
+    "git": [
+        "Repozytorium i git init",
+        "git add i git commit",
+        "Historia zmian",
+        "Branching",
+        "Merge",
+        "Rozwiązywanie konfliktów",
+        "GitHub i remote",
+        "Pull request workflow",
+        "Praca z feature branches",
+    ],
+    "aws": [
+        "Podstawy chmury AWS",
+        "IAM",
+        "EC2",
+        "S3",
+        "RDS",
+        "VPC i networking",
+        "CloudWatch",
+        "Lambda",
+        "Wdrożenie projektu",
+    ],
+    "kubernetes": [
+        "Architektura Kubernetes",
+        "Pod i Container",
+        "Deployment",
+        "Service",
+        "ConfigMap i Secret",
+        "Volumes",
+        "Namespaces",
+        "Helm — podstawy",
+        "Wdrożenie aplikacji",
+    ],
+    "power bi": [
+        "Import i przygotowanie danych",
+        "Power Query",
+        "Model danych",
+        "Relacje",
+        "Podstawy DAX",
+        "Miary i kolumny obliczeniowe",
+        "Wizualizacje",
+        "Dashboard",
+        "Projekt raportu biznesowego",
+    ],
+    "excel": [
+        "Formuły i funkcje",
+        "Tabele",
+        "Filtrowanie i sortowanie",
+        "XLOOKUP i funkcje wyszukiwania",
+        "Tabele przestawne",
+        "Wykresy",
+        "Power Query",
+        "Podstawy automatyzacji",
+        "Projekt analityczny",
+    ],
+    "javascript": [
+        "Zmienne i typy danych",
+        "Funkcje",
+        "Tablice i obiekty",
+        "DOM",
+        "Eventy",
+        "Async/await",
+        "Fetch API",
+        "Moduły",
+        "Projekt praktyczny",
+    ],
+}
+
+
+DEFAULT_ROADMAP = [
+    "Poznaj podstawowe pojęcia i zastosowania",
+    "Przejdź oficjalny tutorial lub kurs podstawowy",
+    "Wykonaj serię małych ćwiczeń",
+    "Poznaj najczęściej używane narzędzia",
+    "Przećwicz typowe zadania rekrutacyjne",
+    "Zbuduj mały projekt praktyczny",
+    "Dodaj projekt do portfolio",
+]
+
+
+def get_skill_roadmap(skill):
+    normalized = str(skill).strip().lower()
+
+    return ROADMAPS.get(
+        normalized,
+        DEFAULT_ROADMAP
+    )

@@ -5,8 +5,17 @@ from database import (
     get_learning_plan,
     update_learning_status,
     update_learning_priority,
-    delete_learning_task
+    delete_learning_task,
+    get_roadmap_progress,
+    update_roadmap_step,
+    update_learning_status_by_skill,
+    save_weekly_goal,
+    get_weekly_goal,
+    get_total_completed_roadmap_steps,
+    delete_weekly_goal
 )
+
+from learning_roadmaps import get_skill_roadmap
 
 
 STATUSES = [
@@ -89,6 +98,101 @@ def show_learning_plan():
     st.caption(
         f"Postęp planu: {progress * 100:.0f}%"
     )
+
+
+    st.divider()
+    st.subheader("📅 Cel tygodniowy")
+
+    weekly_goal = get_weekly_goal(
+        st.session_state.username
+    )
+
+    if weekly_goal:
+        target_steps = weekly_goal[0]
+        start_completed = weekly_goal[1]
+        deadline = weekly_goal[2]
+
+        total_completed = (
+            get_total_completed_roadmap_steps(
+                st.session_state.username
+            )
+        )
+
+        completed_for_goal = max(
+            0,
+            total_completed - start_completed
+        )
+
+        goal_progress = min(
+            completed_for_goal / target_steps,
+            1.0
+        )
+
+        st.metric(
+            "Postęp celu",
+            f"{completed_for_goal}/{target_steps} kroków"
+        )
+
+        st.progress(goal_progress)
+
+        st.caption(
+            f"Termin celu: {deadline}"
+        )
+
+        if completed_for_goal >= target_steps:
+            st.success(
+                "🎉 Cel tygodniowy osiągnięty!"
+            )
+        else:
+            remaining = (
+                target_steps - completed_for_goal
+            )
+
+            st.info(
+                f"Do celu pozostało: "
+                f"{remaining} kroków roadmapy."
+            )
+
+        if st.button(
+            "🗑 Usuń cel tygodniowy",
+            key="delete_weekly_goal"
+        ):
+            delete_weekly_goal(
+                st.session_state.username
+            )
+            st.rerun()
+
+    with st.expander(
+        "⚙️ Ustaw nowy cel tygodniowy"
+    ):
+        goal_steps = st.number_input(
+            "Liczba kroków roadmapy",
+            min_value=1,
+            max_value=50,
+            value=5,
+            step=1,
+            key="weekly_goal_steps"
+        )
+
+        goal_deadline = st.date_input(
+            "Termin celu",
+            key="weekly_goal_deadline"
+        )
+
+        if st.button(
+            "🎯 Zapisz cel",
+            key="save_weekly_goal"
+        ):
+            save_weekly_goal(
+                st.session_state.username,
+                goal_steps,
+                goal_deadline.isoformat()
+            )
+
+            st.success(
+                "Cel tygodniowy został zapisany."
+            )
+            st.rerun()
 
     st.divider()
     st.subheader("🔎 Filtrowanie")
@@ -191,3 +295,98 @@ def show_learning_plan():
                 f"Dodano: {row['Utworzono']} | "
                 f"Ostatnia zmiana: {row['Zaktualizowano']}"
             )
+
+            with st.expander(
+                f"🗺️ Roadmapa: {row['Umiejętność']}"
+            ):
+                roadmap = get_skill_roadmap(
+                    row["Umiejętność"]
+                )
+
+                roadmap_progress = get_roadmap_progress(
+                    st.session_state.username,
+                    row["Umiejętność"]
+                )
+
+                completed_steps = sum(
+                    roadmap_progress.get(
+                        step_number,
+                        False
+                    )
+                    for step_number in range(
+                        len(roadmap)
+                    )
+                )
+
+                roadmap_percent = (
+                    completed_steps / len(roadmap)
+                    if roadmap
+                    else 0
+                )
+
+                st.progress(roadmap_percent)
+
+                st.caption(
+                    f"Postęp roadmapy: "
+                    f"{completed_steps}/{len(roadmap)} "
+                    f"({roadmap_percent * 100:.0f}%)"
+                )
+
+                for step_number, step in enumerate(
+                    roadmap
+                ):
+                    is_completed = (
+                        roadmap_progress.get(
+                            step_number,
+                            False
+                        )
+                    )
+
+                    checked = st.checkbox(
+                        f"{step_number + 1}. {step}",
+                        value=is_completed,
+                        key=(
+                            f"roadmap_{task_id}_"
+                            f"{step_number}"
+                        )
+                    )
+
+                    if checked != is_completed:
+                        update_roadmap_step(
+                            st.session_state.username,
+                            row["Umiejętność"],
+                            step_number,
+                            checked
+                        )
+
+                        updated_progress = (
+                            roadmap_progress.copy()
+                        )
+                        updated_progress[
+                            step_number
+                        ] = checked
+
+                        updated_completed = sum(
+                            updated_progress.get(
+                                number,
+                                False
+                            )
+                            for number in range(
+                                len(roadmap)
+                            )
+                        )
+
+                        if updated_completed == len(roadmap):
+                            new_status = "Ukończone"
+                        elif updated_completed > 0:
+                            new_status = "W trakcie"
+                        else:
+                            new_status = "Do nauki"
+
+                        update_learning_status_by_skill(
+                            st.session_state.username,
+                            row["Umiejętność"],
+                            new_status
+                        )
+
+                        st.rerun()
