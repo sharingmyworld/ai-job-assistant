@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ATS_Report.pdf
+uploaded_cv.pdf

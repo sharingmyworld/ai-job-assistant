@@ -1,5 +1,9 @@
 import os
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 from streamlit_cookies_manager import (
     EncryptedCookieManager

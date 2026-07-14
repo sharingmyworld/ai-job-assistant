@@ -3,3 +3,4 @@ streamlit-cookies-manager
 pandas
 altair
 reportlab
+python-dotenv
