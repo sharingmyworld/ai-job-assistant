@@ -977,7 +977,8 @@ def update_job_application(
     company,
     position,
     application_date,
-    job_url
+    job_url,
+    match_score=None
 ):
     connection = sqlite3.connect(DATABASE_NAME)
     cursor = connection.cursor()
@@ -990,6 +991,7 @@ def update_job_application(
             position=?,
             application_date=?,
             job_url=?,
+            match_score=?,
             updated_at=?
         WHERE id=?
         """,
@@ -998,6 +1000,7 @@ def update_job_application(
             position.strip(),
             application_date,
             job_url.strip(),
+            match_score,
             datetime.now().strftime("%Y-%m-%d %H:%M"),
             application_id
         )

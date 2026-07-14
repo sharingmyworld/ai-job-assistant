@@ -183,6 +183,223 @@ def show_applications():
     st.bar_chart(status_counts)
 
     st.divider()
+    st.subheader("📈 Skuteczność aplikacji")
+
+    active_df = df[
+        ~df["Status"].isin(
+            [
+                "Planowana",
+                "Wycofana"
+            ]
+        )
+    ]
+
+    active_count = len(active_df)
+
+    response_count = int(
+        active_df["Status"].isin(
+            [
+                "Rozmowa HR",
+                "Rozmowa techniczna",
+                "Oferta"
+            ]
+        ).sum()
+    )
+
+    interview_count = int(
+        active_df["Status"].isin(
+            [
+                "Rozmowa HR",
+                "Rozmowa techniczna",
+                "Oferta"
+            ]
+        ).sum()
+    )
+
+    offer_count = int(
+        (active_df["Status"] == "Oferta").sum()
+    )
+
+    rejection_count = int(
+        (active_df["Status"] == "Odrzucona").sum()
+    )
+
+    response_rate = (
+        response_count / active_count * 100
+        if active_count
+        else 0
+    )
+
+    interview_rate = (
+        interview_count / active_count * 100
+        if active_count
+        else 0
+    )
+
+    offer_rate = (
+        offer_count / active_count * 100
+        if active_count
+        else 0
+    )
+
+    rejection_rate = (
+        rejection_count / active_count * 100
+        if active_count
+        else 0
+    )
+
+    rate1, rate2, rate3, rate4 = st.columns(4)
+
+    with rate1:
+        st.metric(
+            "Odpowiedzi",
+            f"{response_rate:.1f}%"
+        )
+
+    with rate2:
+        st.metric(
+            "Rozmowy",
+            f"{interview_rate:.1f}%"
+        )
+
+    with rate3:
+        st.metric(
+            "Oferty",
+            f"{offer_rate:.1f}%"
+        )
+
+    with rate4:
+        st.metric(
+            "Odrzucenia",
+            f"{rejection_rate:.1f}%"
+        )
+
+    scored_df = active_df[
+        active_df["Dopasowanie"].notna()
+    ].copy()
+
+    if not scored_df.empty:
+        st.markdown(
+            "#### 🎯 Dopasowanie CV a wynik rekrutacji"
+        )
+
+        interview_df = scored_df[
+            scored_df["Status"].isin(
+                [
+                    "Rozmowa HR",
+                    "Rozmowa techniczna",
+                    "Oferta"
+                ]
+            )
+        ]
+
+        no_interview_df = scored_df[
+            scored_df["Status"].isin(
+                [
+                    "Wysłana",
+                    "Odrzucona"
+                ]
+            )
+        ]
+
+        avg_all_score = (
+            scored_df["Dopasowanie"].mean()
+        )
+
+        avg_interview_score = (
+            interview_df["Dopasowanie"].mean()
+            if not interview_df.empty
+            else None
+        )
+
+        avg_no_interview_score = (
+            no_interview_df["Dopasowanie"].mean()
+            if not no_interview_df.empty
+            else None
+        )
+
+        score1, score2, score3 = st.columns(3)
+
+        with score1:
+            st.metric(
+                "Średnie dopasowanie",
+                f"{avg_all_score:.1f}%"
+            )
+
+        with score2:
+            st.metric(
+                "Średnie przy rozmowie",
+                (
+                    f"{avg_interview_score:.1f}%"
+                    if avg_interview_score is not None
+                    else "Brak danych"
+                )
+            )
+
+        with score3:
+            st.metric(
+                "Średnie bez rozmowy",
+                (
+                    f"{avg_no_interview_score:.1f}%"
+                    if avg_no_interview_score is not None
+                    else "Brak danych"
+                )
+            )
+
+        score_chart_df = (
+            scored_df[
+                [
+                    "Stanowisko",
+                    "Firma",
+                    "Dopasowanie"
+                ]
+            ]
+            .copy()
+        )
+
+        score_chart_df["Aplikacja"] = (
+            score_chart_df["Stanowisko"]
+            + " — "
+            + score_chart_df["Firma"]
+        )
+
+        st.bar_chart(
+            score_chart_df.set_index(
+                "Aplikacja"
+            )["Dopasowanie"]
+        )
+
+        if (
+            avg_interview_score is not None
+            and avg_no_interview_score is not None
+        ):
+            difference = (
+                avg_interview_score
+                - avg_no_interview_score
+            )
+
+            if difference > 0:
+                st.success(
+                    f"Aplikacje zakończone rozmową mają "
+                    f"średnio o {difference:.1f} p.p. "
+                    f"wyższe dopasowanie CV."
+                )
+            elif difference < 0:
+                st.info(
+                    "Na obecnych danych wyższe dopasowanie "
+                    "CV nie przekłada się jeszcze na więcej rozmów."
+                )
+            else:
+                st.info(
+                    "Średnie dopasowanie jest obecnie takie samo."
+                )
+    else:
+        st.info(
+            "Brak wystarczających danych o dopasowaniu CV. "
+            "Dodawaj oferty do trackera bezpośrednio z analizy CV."
+        )
+
+    st.divider()
     st.subheader("🔎 Filtrowanie")
 
     filter_col1, filter_col2 = st.columns(2)
@@ -313,6 +530,21 @@ def show_applications():
                     key=f"edit_url_{application_id}"
                 )
 
+                current_match_score = (
+                    float(row["Dopasowanie"])
+                    if pd.notna(row["Dopasowanie"])
+                    else 0.0
+                )
+
+                edit_match_score = st.number_input(
+                    "Dopasowanie CV (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=current_match_score,
+                    step=1.0,
+                    key=f"edit_match_score_{application_id}"
+                )
+
                 if st.button(
                     "💾 Zapisz zmiany",
                     key=f"save_edit_{application_id}"
@@ -331,7 +563,8 @@ def show_applications():
                             edit_company,
                             edit_position,
                             edit_application_date.isoformat(),
-                            edit_job_url
+                            edit_job_url,
+                            edit_match_score
                         )
 
                         st.success(
