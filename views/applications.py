@@ -2,11 +2,18 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
+from followup_assistant import (
+    should_suggest_followup,
+    generate_followup_message
+)
+
 from database import (
     add_job_application,
     get_job_applications,
     update_job_application_status,
     update_job_application_notes,
+    update_job_application_event,
+    update_job_application,
     delete_job_application
 )
 
@@ -120,7 +127,9 @@ def show_applications():
             "Notatki",
             "Utworzono",
             "Zaktualizowano",
-            "Dopasowanie"
+            "Dopasowanie",
+            "Termin wydarzenia",
+            "Typ wydarzenia"
         ]
     )
 
@@ -268,6 +277,68 @@ def show_applications():
                     )
                     st.rerun()
 
+            with st.expander(
+                "✏️ Edytuj aplikację"
+            ):
+                edit_company = st.text_input(
+                    "Firma",
+                    value=row["Firma"],
+                    key=f"edit_company_{application_id}"
+                )
+
+                edit_position = st.text_input(
+                    "Stanowisko",
+                    value=row["Stanowisko"],
+                    key=f"edit_position_{application_id}"
+                )
+
+                parsed_application_date = pd.to_datetime(
+                    row["Data aplikacji"],
+                    errors="coerce"
+                )
+
+                edit_application_date = st.date_input(
+                    "Data aplikacji",
+                    value=(
+                        parsed_application_date.date()
+                        if pd.notna(parsed_application_date)
+                        else date.today()
+                    ),
+                    key=f"edit_date_{application_id}"
+                )
+
+                edit_job_url = st.text_input(
+                    "Link do oferty",
+                    value=row["Link"] or "",
+                    key=f"edit_url_{application_id}"
+                )
+
+                if st.button(
+                    "💾 Zapisz zmiany",
+                    key=f"save_edit_{application_id}"
+                ):
+                    if not edit_company.strip():
+                        st.warning(
+                            "Podaj nazwę firmy."
+                        )
+                    elif not edit_position.strip():
+                        st.warning(
+                            "Podaj nazwę stanowiska."
+                        )
+                    else:
+                        update_job_application(
+                            application_id,
+                            edit_company,
+                            edit_position,
+                            edit_application_date.isoformat(),
+                            edit_job_url
+                        )
+
+                        st.success(
+                            "Aplikacja została zaktualizowana."
+                        )
+                        st.rerun()
+
             current_status = row["Status"]
 
             new_status = st.selectbox(
@@ -291,6 +362,112 @@ def show_applications():
                     "🔗 Otwórz ofertę",
                     row["Link"]
                 )
+
+            if should_suggest_followup(
+                row["Data aplikacji"],
+                row["Status"]
+            ):
+                st.warning(
+                    "⏰ Od wysłania aplikacji minęło "
+                    "co najmniej 7 dni. Warto wysłać follow-up."
+                )
+
+                with st.expander(
+                    "✉️ Generuj wiadomość follow-up"
+                ):
+                    followup_language = st.selectbox(
+                        "Język wiadomości",
+                        ["Polski", "English"],
+                        key=f"followup_language_{application_id}"
+                    )
+
+                    followup_message = generate_followup_message(
+                        row["Firma"],
+                        row["Stanowisko"],
+                        followup_language
+                    )
+
+                    st.text_area(
+                        "Gotowa wiadomość",
+                        value=followup_message,
+                        height=260,
+                        key=f"followup_message_{application_id}"
+                    )
+
+            event_col1, event_col2 = st.columns(2)
+
+            with event_col1:
+                current_event_date = (
+                    pd.to_datetime(
+                        row["Termin wydarzenia"],
+                        errors="coerce"
+                    )
+                )
+
+                default_event_date = (
+                    current_event_date.date()
+                    if pd.notna(current_event_date)
+                    else date.today()
+                )
+
+                event_date = st.date_input(
+                    "Termin kolejnego działania",
+                    value=default_event_date,
+                    key=f"event_date_{application_id}"
+                )
+
+            with event_col2:
+                event_types = [
+                    "Brak",
+                    "Follow-up",
+                    "Rozmowa HR",
+                    "Rozmowa techniczna",
+                    "Zadanie rekrutacyjne",
+                    "Decyzja",
+                    "Inne"
+                ]
+
+                current_event_type = (
+                    row["Typ wydarzenia"]
+                    if row["Typ wydarzenia"] in event_types
+                    else "Brak"
+                )
+
+                event_type = st.selectbox(
+                    "Typ wydarzenia",
+                    event_types,
+                    index=event_types.index(
+                        current_event_type
+                    ),
+                    key=f"event_type_{application_id}"
+                )
+
+            if st.button(
+                "📅 Zapisz termin",
+                key=f"save_event_{application_id}"
+            ):
+                saved_date = (
+                    ""
+                    if event_type == "Brak"
+                    else event_date.isoformat()
+                )
+
+                saved_type = (
+                    ""
+                    if event_type == "Brak"
+                    else event_type
+                )
+
+                update_job_application_event(
+                    application_id,
+                    saved_date,
+                    saved_type
+                )
+
+                st.success(
+                    "Termin został zapisany."
+                )
+                st.rerun()
 
             updated_notes = st.text_area(
                 "Notatki",

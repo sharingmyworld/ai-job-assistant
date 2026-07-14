@@ -691,7 +691,9 @@ def create_job_applications_table():
             job_url TEXT DEFAULT '',
             notes TEXT DEFAULT '',
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            next_event_date TEXT DEFAULT '',
+            next_event_type TEXT DEFAULT ''
         )
     """)
 
@@ -712,6 +714,23 @@ def create_job_applications_table():
             """
         )
 
+
+    if "next_event_date" not in columns:
+        cursor.execute(
+            """
+            ALTER TABLE job_applications
+            ADD COLUMN next_event_date TEXT DEFAULT ''
+            """
+        )
+
+    if "next_event_type" not in columns:
+        cursor.execute(
+            """
+            ALTER TABLE job_applications
+            ADD COLUMN next_event_type TEXT DEFAULT ''
+            """
+        )
+
     connection.commit()
     connection.close()
 
@@ -724,7 +743,9 @@ def add_job_application(
     application_date,
     job_url="",
     notes="",
-    match_score=None
+    match_score=None,
+    next_event_date="",
+    next_event_type=""
 ):
     create_job_applications_table()
 
@@ -746,9 +767,11 @@ def add_job_application(
             notes,
             created_at,
             updated_at,
-            match_score
+            match_score,
+            next_event_date,
+            next_event_type
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             username,
@@ -760,7 +783,9 @@ def add_job_application(
             notes.strip(),
             now,
             now,
-            match_score
+            match_score,
+            next_event_date,
+            next_event_type
         )
     )
 
@@ -786,7 +811,9 @@ def get_job_applications(username):
             notes,
             created_at,
             updated_at,
-            match_score
+            match_score,
+            COALESCE(next_event_date, ''),
+            COALESCE(next_event_type, '')
         FROM job_applications
         WHERE username=?
         ORDER BY application_date DESC, id DESC
@@ -871,6 +898,109 @@ def delete_job_application(application_id):
         WHERE id=?
         """,
         (application_id,)
+    )
+
+    connection.commit()
+    connection.close()
+
+
+
+def update_job_application_event(
+    application_id,
+    event_date,
+    event_type
+):
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE job_applications
+        SET
+            next_event_date=?,
+            next_event_type=?,
+            updated_at=?
+        WHERE id=?
+        """,
+        (
+            event_date,
+            event_type,
+            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            application_id
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_upcoming_application_events(
+    username,
+    limit=5
+):
+    create_job_applications_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            company,
+            position,
+            next_event_date,
+            next_event_type,
+            status
+        FROM job_applications
+        WHERE
+            username=?
+            AND COALESCE(next_event_date, '') != ''
+        ORDER BY next_event_date ASC
+        LIMIT ?
+        """,
+        (
+            username,
+            limit
+        )
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return rows
+
+
+
+def update_job_application(
+    application_id,
+    company,
+    position,
+    application_date,
+    job_url
+):
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE job_applications
+        SET
+            company=?,
+            position=?,
+            application_date=?,
+            job_url=?,
+            updated_at=?
+        WHERE id=?
+        """,
+        (
+            company.strip(),
+            position.strip(),
+            application_date,
+            job_url.strip(),
+            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            application_id
+        )
     )
 
     connection.commit()

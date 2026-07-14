@@ -7,7 +7,8 @@ from database import (
     get_learning_plan,
     get_roadmap_progress,
     get_weekly_goal,
-    get_total_completed_roadmap_steps
+    get_total_completed_roadmap_steps,
+    get_upcoming_application_events
 )
 
 from learning_roadmaps import get_skill_roadmap
@@ -70,6 +71,62 @@ def show_dashboard():
         st.line_chart(
             df.set_index("Data")
         )
+
+
+    upcoming_events = get_upcoming_application_events(
+        username,
+        limit=5
+    )
+
+    if upcoming_events:
+        from datetime import date
+
+        st.divider()
+        st.subheader("📅 Najbliższe wydarzenia rekrutacyjne")
+
+        today = date.today()
+
+        for event in upcoming_events:
+            _, company, position, event_date, event_type, status = event
+
+            parsed_date = pd.to_datetime(
+                event_date,
+                errors="coerce"
+            )
+
+            if pd.isna(parsed_date):
+                continue
+
+            days_left = (
+                parsed_date.date() - today
+            ).days
+
+            if days_left < 0:
+                when_text = (
+                    f"{abs(days_left)} dni po terminie"
+                )
+            elif days_left == 0:
+                when_text = "dzisiaj"
+            elif days_left == 1:
+                when_text = "jutro"
+            else:
+                when_text = f"za {days_left} dni"
+
+            if days_left < 0:
+                st.error(
+                    f"{event_type} — {position} — "
+                    f"{company} ({when_text})"
+                )
+            elif days_left <= 2:
+                st.warning(
+                    f"{event_type} — {position} — "
+                    f"{company} ({when_text})"
+                )
+            else:
+                st.info(
+                    f"{event_type} — {position} — "
+                    f"{company} ({when_text})"
+                )
 
     st.divider()
 
