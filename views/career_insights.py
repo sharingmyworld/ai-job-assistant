@@ -35,6 +35,10 @@ def show_career_insights():
         "interview_feedback",
         []
     )
+    mock_interview_answers = data.get(
+        "mock_interview_answers",
+        []
+    )
 
     if not analyses and not learning_plan and not applications:
         st.info(
@@ -564,6 +568,175 @@ def show_career_insights():
         st.info(
             "Brak feedbacku z rozmów. "
             "Dodaj go w module Przygotowanie do rozmowy."
+        )
+
+    st.divider()
+    st.subheader("🎭 Analiza Mock Interview")
+
+    if mock_interview_answers:
+        mock_df = pd.DataFrame(
+            mock_interview_answers,
+            columns=[
+                "Aplikacja ID",
+                "Numer pytania",
+                "Pytanie",
+                "Odpowiedź",
+                "Ocena",
+                "Aktualizacja"
+            ]
+        )
+
+        answered_mock = mock_df[
+            mock_df["Odpowiedź"]
+            .fillna("")
+            .str.strip()
+            != ""
+        ].copy()
+
+        if not answered_mock.empty:
+            average_mock_score = (
+                answered_mock["Ocena"].mean()
+            )
+
+            strong_answers = int(
+                (
+                    answered_mock["Ocena"] >= 4
+                ).sum()
+            )
+
+            weak_answers = int(
+                (
+                    answered_mock["Ocena"] <= 2
+                ).sum()
+            )
+
+            mock1, mock2, mock3 = st.columns(3)
+
+            with mock1:
+                st.metric(
+                    "Średnia ocena",
+                    f"{average_mock_score:.1f}/5"
+                )
+
+            with mock2:
+                st.metric(
+                    "Mocne odpowiedzi",
+                    strong_answers
+                )
+
+            with mock3:
+                st.metric(
+                    "Słabe odpowiedzi",
+                    weak_answers
+                )
+
+            score_counts = (
+                answered_mock["Ocena"]
+                .value_counts()
+                .reindex(
+                    [0, 1, 2, 3, 4, 5],
+                    fill_value=0
+                )
+                .rename_axis("Ocena")
+                .reset_index(name="Liczba odpowiedzi")
+            )
+
+            import altair as alt
+
+            mock_chart = (
+                alt.Chart(score_counts)
+                .mark_bar()
+                .encode(
+                    x=alt.X(
+                        "Ocena:O",
+                        title="Ocena odpowiedzi"
+                    ),
+                    y=alt.Y(
+                        "Liczba odpowiedzi:Q",
+                        title="Liczba odpowiedzi"
+                    ),
+                    tooltip=[
+                        "Ocena",
+                        "Liczba odpowiedzi"
+                    ]
+                )
+            )
+
+            st.altair_chart(
+                mock_chart,
+                use_container_width=True
+            )
+
+            weak_df = answered_mock[
+                answered_mock["Ocena"] <= 2
+            ].sort_values(
+                by="Ocena",
+                ascending=True
+            )
+
+            if not weak_df.empty:
+                st.markdown(
+                    "#### ⚠️ Pytania wymagające ćwiczenia"
+                )
+
+                for _, row in weak_df.head(5).iterrows():
+                    st.write(
+                        f"• **{row['Pytanie']}** "
+                        f"— ocena {int(row['Ocena'])}/5"
+                    )
+
+                weakest_question = weak_df.iloc[0]
+
+                st.warning(
+                    f"Najpierw przećwicz odpowiedź na pytanie: "
+                    f"**{weakest_question['Pytanie']}**"
+                )
+
+            application_summary = (
+                answered_mock.groupby(
+                    "Aplikacja ID"
+                )
+                .agg(
+                    Średnia_ocena=("Ocena", "mean"),
+                    Odpowiedzi=("Ocena", "count")
+                )
+                .reset_index()
+            )
+
+            if len(application_summary) > 1:
+                st.markdown(
+                    "#### 📈 Wyniki sesji według aplikacji"
+                )
+
+                st.dataframe(
+                    application_summary,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            if average_mock_score < 2.5:
+                st.error(
+                    "Odpowiedzi wymagają dopracowania. "
+                    "Skup się na konkretach, przykładach i rezultatach."
+                )
+            elif average_mock_score < 4:
+                st.info(
+                    "Przygotowanie jest na dobrym poziomie. "
+                    "Rozwijaj odpowiedzi o konkretne projekty i wyniki."
+                )
+            else:
+                st.success(
+                    "Mock Interview wskazuje na dobre przygotowanie. "
+                    "Skup się teraz na płynności i naturalności odpowiedzi."
+                )
+        else:
+            st.info(
+                "Brak ukończonych odpowiedzi w Mock Interview."
+            )
+    else:
+        st.info(
+            "Brak danych z Mock Interview. "
+            "Wykonaj sesję, aby zobaczyć analizę."
         )
 
     st.divider()

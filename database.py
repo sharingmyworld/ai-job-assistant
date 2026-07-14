@@ -1106,13 +1106,33 @@ def get_career_insights_data(username):
     )
     interview_feedback = cursor.fetchall()
 
+    create_mock_interview_table()
+
+    cursor.execute(
+        """
+        SELECT
+            application_id,
+            question_number,
+            question,
+            answer,
+            score,
+            updated_at
+        FROM mock_interview_answers
+        WHERE username=?
+        ORDER BY updated_at ASC, question_number ASC
+        """,
+        (username,)
+    )
+    mock_interview_answers = cursor.fetchall()
+
     connection.close()
 
     return {
         "analyses": analyses,
         "learning_plan": learning_plan,
         "applications": applications,
-        "interview_feedback": interview_feedback
+        "interview_feedback": interview_feedback,
+        "mock_interview_answers": mock_interview_answers
     }
 
 
