@@ -4,7 +4,9 @@ import pandas as pd
 from database import (
     get_job_applications,
     get_interview_prep_data,
-    save_interview_prep_item
+    save_interview_prep_item,
+    save_interview_feedback,
+    get_interview_feedback
 )
 
 
@@ -413,6 +415,196 @@ def show_interview_prep():
     for question in suggested_questions:
         st.write(f"• {question}")
 
+
+    st.divider()
+    st.subheader("🧾 Feedback po rozmowie")
+
+    interview_feedback = get_interview_feedback(
+        username,
+        application_id
+    )
+
+    with st.expander(
+        "➕ Dodaj lub zaktualizuj feedback",
+        expanded=False
+    ):
+        from datetime import date
+
+        feedback_date = st.date_input(
+            "Data rozmowy",
+            value=date.today(),
+            key=f"feedback_date_{application_id}"
+        )
+
+        feedback_type = st.selectbox(
+            "Typ rozmowy",
+            [
+                "Rozmowa HR",
+                "Rozmowa techniczna",
+                "Rozmowa z managerem",
+                "Case study",
+                "Zadanie rekrutacyjne",
+                "Inne"
+            ],
+            key=f"feedback_type_{application_id}"
+        )
+
+        rating_col, difficulty_col = st.columns(2)
+
+        with rating_col:
+            self_rating = st.slider(
+                "Jak oceniasz swoją rozmowę?",
+                min_value=1,
+                max_value=5,
+                value=3,
+                key=f"feedback_rating_{application_id}"
+            )
+
+        with difficulty_col:
+            difficulty = st.slider(
+                "Poziom trudności",
+                min_value=1,
+                max_value=5,
+                value=3,
+                key=f"feedback_difficulty_{application_id}"
+            )
+
+        feedback_result = st.selectbox(
+            "Wynik rozmowy",
+            [
+                "Oczekuję na decyzję",
+                "Przechodzę dalej",
+                "Oferta",
+                "Odrzucona",
+                "Wycofana"
+            ],
+            key=f"feedback_result_{application_id}"
+        )
+
+        difficult_questions = st.text_area(
+            "Najtrudniejsze pytania",
+            placeholder=(
+                "Jakie pytania sprawiły największą trudność?"
+            ),
+            key=f"feedback_questions_{application_id}"
+        )
+
+        strengths = st.text_area(
+            "Co poszło dobrze?",
+            placeholder=(
+                "Mocne odpowiedzi, przykłady, komunikacja..."
+            ),
+            key=f"feedback_strengths_{application_id}"
+        )
+
+        improvements = st.text_area(
+            "Co poprawić?",
+            placeholder=(
+                "Braki techniczne, zbyt ogólne odpowiedzi..."
+            ),
+            key=f"feedback_improvements_{application_id}"
+        )
+
+        next_steps = st.text_area(
+            "Kolejne kroki",
+            placeholder=(
+                "Follow-up, przygotowanie do kolejnego etapu..."
+            ),
+            key=f"feedback_next_steps_{application_id}"
+        )
+
+        if st.button(
+            "💾 Zapisz feedback",
+            key=f"save_feedback_{application_id}"
+        ):
+            save_interview_feedback(
+                username,
+                application_id,
+                feedback_date.isoformat(),
+                feedback_type,
+                self_rating,
+                difficulty,
+                feedback_result,
+                difficult_questions,
+                strengths,
+                improvements,
+                next_steps
+            )
+
+            st.success(
+                "Feedback został zapisany."
+            )
+            st.rerun()
+
+    if interview_feedback:
+        st.markdown("#### 📚 Historia feedbacku")
+
+        for feedback in interview_feedback:
+            (
+                feedback_id,
+                interview_date,
+                interview_type,
+                self_rating,
+                difficulty,
+                result,
+                difficult_questions,
+                strengths,
+                improvements,
+                next_steps,
+                created_at,
+                updated_at
+            ) = feedback
+
+            with st.expander(
+                f"{interview_date} — "
+                f"{interview_type} — "
+                f"{result}"
+            ):
+                metric1, metric2 = st.columns(2)
+
+                with metric1:
+                    st.metric(
+                        "Samoocena",
+                        f"{self_rating}/5"
+                    )
+
+                with metric2:
+                    st.metric(
+                        "Trudność",
+                        f"{difficulty}/5"
+                    )
+
+                if difficult_questions:
+                    st.markdown(
+                        "**Najtrudniejsze pytania:**"
+                    )
+                    st.write(difficult_questions)
+
+                if strengths:
+                    st.markdown(
+                        "**Co poszło dobrze:**"
+                    )
+                    st.write(strengths)
+
+                if improvements:
+                    st.markdown(
+                        "**Co poprawić:**"
+                    )
+                    st.write(improvements)
+
+                if next_steps:
+                    st.markdown(
+                        "**Kolejne kroki:**"
+                    )
+                    st.write(next_steps)
+
+                st.caption(
+                    f"Ostatnia aktualizacja: {updated_at}"
+                )
+    else:
+        st.info(
+            "Nie zapisano jeszcze feedbacku dla tej aplikacji."
+        )
     st.divider()
     st.subheader("📝 Notatki przed rozmową")
 

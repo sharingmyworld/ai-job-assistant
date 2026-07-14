@@ -1185,3 +1185,148 @@ def get_interview_prep_data(
         key: value
         for key, value in rows
     }
+
+
+
+def create_interview_feedback_table():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS interview_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            application_id INTEGER NOT NULL,
+            interview_date TEXT NOT NULL,
+            interview_type TEXT NOT NULL,
+            self_rating INTEGER NOT NULL,
+            difficulty INTEGER NOT NULL,
+            result TEXT NOT NULL,
+            difficult_questions TEXT DEFAULT '',
+            strengths TEXT DEFAULT '',
+            improvements TEXT DEFAULT '',
+            next_steps TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(username, application_id, interview_date, interview_type)
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def save_interview_feedback(
+    username,
+    application_id,
+    interview_date,
+    interview_type,
+    self_rating,
+    difficulty,
+    result,
+    difficult_questions="",
+    strengths="",
+    improvements="",
+    next_steps=""
+):
+    create_interview_feedback_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    cursor.execute(
+        """
+        INSERT INTO interview_feedback
+        (
+            username,
+            application_id,
+            interview_date,
+            interview_type,
+            self_rating,
+            difficulty,
+            result,
+            difficult_questions,
+            strengths,
+            improvements,
+            next_steps,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(
+            username,
+            application_id,
+            interview_date,
+            interview_type
+        )
+        DO UPDATE SET
+            self_rating=excluded.self_rating,
+            difficulty=excluded.difficulty,
+            result=excluded.result,
+            difficult_questions=excluded.difficult_questions,
+            strengths=excluded.strengths,
+            improvements=excluded.improvements,
+            next_steps=excluded.next_steps,
+            updated_at=excluded.updated_at
+        """,
+        (
+            username,
+            application_id,
+            interview_date,
+            interview_type,
+            int(self_rating),
+            int(difficulty),
+            result,
+            difficult_questions.strip(),
+            strengths.strip(),
+            improvements.strip(),
+            next_steps.strip(),
+            now,
+            now
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_interview_feedback(
+    username,
+    application_id
+):
+    create_interview_feedback_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            interview_date,
+            interview_type,
+            self_rating,
+            difficulty,
+            result,
+            difficult_questions,
+            strengths,
+            improvements,
+            next_steps,
+            created_at,
+            updated_at
+        FROM interview_feedback
+        WHERE username=? AND application_id=?
+        ORDER BY interview_date DESC, id DESC
+        """,
+        (
+            username,
+            application_id
+        )
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return rows
