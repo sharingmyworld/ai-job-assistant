@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
 
-from database import get_job_applications
+from database import (
+    get_job_applications,
+    get_interview_prep_data,
+    save_interview_prep_item
+)
 
 
 TECH_QUESTIONS = {
@@ -218,6 +222,14 @@ def show_interview_prep():
         df["Etykieta"] == selected_label
     ].iloc[0]
 
+    application_id = int(selected["ID"])
+    username = st.session_state.username
+
+    saved_prep = get_interview_prep_data(
+        username,
+        application_id
+    )
+
     position = selected["Stanowisko"]
     company = selected["Firma"]
     match_score = (
@@ -269,10 +281,29 @@ def show_interview_prep():
     completed_count = 0
 
     for index, step in enumerate(preparation_plan):
+        item_key = f"prep_step_{index}"
+
+        saved_checked = (
+            saved_prep.get(
+                item_key,
+                "False"
+            ) == "True"
+        )
+
         checked = st.checkbox(
             f"{index + 1}. {step}",
-            key=f"prep_{int(selected['ID'])}_{index}",
+            value=saved_checked,
+            key=f"prep_{application_id}_{index}",
         )
+
+        if checked != saved_checked:
+            save_interview_prep_item(
+                username,
+                application_id,
+                item_key,
+                checked
+            )
+            st.rerun()
 
         if checked:
             completed_count += 1
@@ -304,14 +335,32 @@ def show_interview_prep():
         with st.expander(
             f"{index}. {question}"
         ):
-            st.text_area(
+            item_key = f"tech_answer_{index}"
+
+            answer = st.text_area(
                 "Twoja odpowiedź",
+                value=saved_prep.get(
+                    item_key,
+                    ""
+                ),
                 key=(
                     f"tech_answer_"
-                    f"{int(selected['ID'])}_{index}"
+                    f"{application_id}_{index}"
                 ),
                 height=120,
             )
+
+            if st.button(
+                "💾 Zapisz odpowiedź",
+                key=f"save_tech_{application_id}_{index}"
+            ):
+                save_interview_prep_item(
+                    username,
+                    application_id,
+                    item_key,
+                    answer
+                )
+                st.success("Odpowiedź zapisana.")
 
     st.divider()
     st.subheader("🤝 Pytania HR")
@@ -323,14 +372,32 @@ def show_interview_prep():
         with st.expander(
             f"{index}. {question}"
         ):
-            st.text_area(
+            item_key = f"hr_answer_{index}"
+
+            answer = st.text_area(
                 "Twoja odpowiedź",
+                value=saved_prep.get(
+                    item_key,
+                    ""
+                ),
                 key=(
                     f"hr_answer_"
-                    f"{int(selected['ID'])}_{index}"
+                    f"{application_id}_{index}"
                 ),
                 height=120,
             )
+
+            if st.button(
+                "💾 Zapisz odpowiedź",
+                key=f"save_hr_{application_id}_{index}"
+            ):
+                save_interview_prep_item(
+                    username,
+                    application_id,
+                    item_key,
+                    answer
+                )
+                st.success("Odpowiedź zapisana.")
 
     st.divider()
     st.subheader("❓ Pytania do firmy")
@@ -349,8 +416,27 @@ def show_interview_prep():
     st.divider()
     st.subheader("📝 Notatki przed rozmową")
 
-    st.text_area(
+    interview_notes = st.text_area(
         "Najważniejsze informacje, które chcesz zapamiętać",
+        value=saved_prep.get(
+            "interview_notes",
+            ""
+        ),
         height=200,
-        key=f"interview_notes_{int(selected['ID'])}",
+        key=f"interview_notes_{application_id}",
     )
+
+    if st.button(
+        "💾 Zapisz notatki",
+        key=f"save_interview_notes_{application_id}"
+    ):
+        save_interview_prep_item(
+            username,
+            application_id,
+            "interview_notes",
+            interview_notes
+        )
+
+        st.success(
+            "Notatki zostały zapisane."
+        )

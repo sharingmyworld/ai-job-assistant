@@ -1094,3 +1094,94 @@ def get_career_insights_data(username):
         "learning_plan": learning_plan,
         "applications": applications
     }
+
+
+
+def create_interview_prep_table():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS interview_prep (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            application_id INTEGER NOT NULL,
+            item_key TEXT NOT NULL,
+            item_value TEXT DEFAULT '',
+            updated_at TEXT NOT NULL,
+            UNIQUE(username, application_id, item_key)
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def save_interview_prep_item(
+    username,
+    application_id,
+    item_key,
+    item_value
+):
+    create_interview_prep_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO interview_prep
+        (
+            username,
+            application_id,
+            item_key,
+            item_value,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(username, application_id, item_key)
+        DO UPDATE SET
+            item_value=excluded.item_value,
+            updated_at=excluded.updated_at
+        """,
+        (
+            username,
+            application_id,
+            item_key,
+            str(item_value),
+            datetime.now().strftime("%Y-%m-%d %H:%M")
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_interview_prep_data(
+    username,
+    application_id
+):
+    create_interview_prep_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT item_key, item_value
+        FROM interview_prep
+        WHERE username=? AND application_id=?
+        """,
+        (
+            username,
+            application_id
+        )
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return {
+        key: value
+        for key, value in rows
+    }
