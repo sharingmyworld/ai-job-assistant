@@ -31,6 +31,10 @@ def show_career_insights():
     analyses = data["analyses"]
     learning_plan = data["learning_plan"]
     applications = data["applications"]
+    interview_feedback = data.get(
+        "interview_feedback",
+        []
+    )
 
     if not analyses and not learning_plan and not applications:
         st.info(
@@ -344,6 +348,222 @@ def show_career_insights():
     else:
         st.info(
             "Brak danych o wersjach CV."
+        )
+
+    st.divider()
+    st.subheader("🎤 Wnioski z rozmów")
+
+    if interview_feedback:
+        feedback_df = pd.DataFrame(
+            interview_feedback,
+            columns=[
+                "Typ rozmowy",
+                "Samoocena",
+                "Trudność",
+                "Wynik",
+                "Trudne pytania",
+                "Do poprawy"
+            ]
+        )
+
+        avg_rating = feedback_df["Samoocena"].mean()
+        avg_difficulty = feedback_df["Trudność"].mean()
+
+        passed_results = {
+            "Przechodzę dalej",
+            "Oferta"
+        }
+
+        pass_rate = (
+            feedback_df["Wynik"]
+            .isin(passed_results)
+            .mean()
+            * 100
+        )
+
+        feedback1, feedback2, feedback3 = st.columns(3)
+
+        with feedback1:
+            st.metric(
+                "Średnia samoocena",
+                f"{avg_rating:.1f}/5"
+            )
+
+        with feedback2:
+            st.metric(
+                "Średnia trudność",
+                f"{avg_difficulty:.1f}/5"
+            )
+
+        with feedback3:
+            st.metric(
+                "Przejście dalej",
+                f"{pass_rate:.1f}%"
+            )
+
+        type_summary = (
+            feedback_df.groupby("Typ rozmowy")
+            .agg(
+                Liczba=("Typ rozmowy", "count"),
+                Średnia_samoocena=("Samoocena", "mean"),
+                Średnia_trudność=("Trudność", "mean")
+            )
+            .reset_index()
+        )
+
+        st.markdown("#### 📊 Wyniki według typu rozmowy")
+
+        st.dataframe(
+            type_summary,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        import altair as alt
+
+        chart_data = type_summary.melt(
+            id_vars=["Typ rozmowy"],
+            value_vars=[
+                "Średnia_samoocena",
+                "Średnia_trudność"
+            ],
+            var_name="Metryka",
+            value_name="Wynik"
+        )
+
+        chart_data["Metryka"] = (
+            chart_data["Metryka"]
+            .replace(
+                {
+                    "Średnia_samoocena": "Samoocena",
+                    "Średnia_trudność": "Trudność"
+                }
+            )
+        )
+
+        interview_chart = (
+            alt.Chart(chart_data)
+            .mark_bar()
+            .encode(
+                x=alt.X(
+                    "Typ rozmowy:N",
+                    title="Typ rozmowy"
+                ),
+                xOffset="Metryka:N",
+                y=alt.Y(
+                    "Wynik:Q",
+                    title="Ocena",
+                    scale=alt.Scale(
+                        domain=[0, 5]
+                    )
+                ),
+                color=alt.Color(
+                    "Metryka:N",
+                    title="Metryka"
+                ),
+                tooltip=[
+                    "Typ rozmowy",
+                    "Metryka",
+                    alt.Tooltip(
+                        "Wynik:Q",
+                        format=".1f"
+                    )
+                ]
+            )
+        )
+
+        st.altair_chart(
+            interview_chart,
+            use_container_width=True
+        )
+
+        improvement_counter = Counter()
+
+        for text in feedback_df["Do poprawy"].fillna(""):
+            for fragment in str(text).replace(
+                "\n",
+                ","
+            ).split(","):
+                clean = fragment.strip().lower()
+
+                if clean:
+                    improvement_counter[clean] += 1
+
+        if improvement_counter:
+            st.markdown(
+                "#### 🛠️ Najczęstsze obszary do poprawy"
+            )
+
+            improvement_rows = [
+                {
+                    "Obszar": item.title(),
+                    "Wystąpienia": count
+                }
+                for item, count in improvement_counter.most_common(10)
+            ]
+
+            improvement_df = pd.DataFrame(
+                improvement_rows
+            )
+
+            st.bar_chart(
+                improvement_df.set_index("Obszar")
+            )
+
+            top_improvement = (
+                improvement_counter.most_common(1)[0]
+            )
+
+            st.warning(
+                f"Najczęściej powtarzający się obszar do poprawy: "
+                f"**{top_improvement[0].title()}**."
+            )
+
+        difficult_counter = Counter()
+
+        for text in feedback_df[
+            "Trudne pytania"
+        ].fillna(""):
+            for fragment in str(text).replace(
+                "\n",
+                ","
+            ).split(","):
+                clean = fragment.strip().lower()
+
+                if clean:
+                    difficult_counter[clean] += 1
+
+        if difficult_counter:
+            st.markdown(
+                "#### ❓ Najczęściej trudne pytania"
+            )
+
+            for question, count in (
+                difficult_counter.most_common(5)
+            ):
+                st.write(
+                    f"• {question.title()} ({count}×)"
+                )
+
+        if avg_rating < 3:
+            st.error(
+                "Średnia samoocena jest niska. "
+                "Warto częściej ćwiczyć odpowiedzi."
+            )
+        elif avg_difficulty >= 4:
+            st.warning(
+                "Rozmowy są oceniane jako trudne. "
+                "Skup się na pytaniach technicznych i symulacjach."
+            )
+        else:
+            st.success(
+                "Wyniki rozmów wyglądają stabilnie. "
+                "Kontynuuj przygotowania i analizuj powtarzające się pytania."
+            )
+    else:
+        st.info(
+            "Brak feedbacku z rozmów. "
+            "Dodaj go w module Przygotowanie do rozmowy."
         )
 
     st.divider()

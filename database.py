@@ -1087,12 +1087,32 @@ def get_career_insights_data(username):
     )
     applications = cursor.fetchall()
 
+    create_interview_feedback_table()
+
+    cursor.execute(
+        """
+        SELECT
+            interview_type,
+            self_rating,
+            difficulty,
+            result,
+            difficult_questions,
+            improvements
+        FROM interview_feedback
+        WHERE username=?
+        ORDER BY interview_date DESC, id DESC
+        """,
+        (username,)
+    )
+    interview_feedback = cursor.fetchall()
+
     connection.close()
 
     return {
         "analyses": analyses,
         "learning_plan": learning_plan,
-        "applications": applications
+        "applications": applications,
+        "interview_feedback": interview_feedback
     }
 
 
