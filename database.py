@@ -1,17 +1,62 @@
-import sqlite3
+import os
+import re
 from datetime import datetime
 
+import psycopg2
 
-DATABASE_NAME = "history.db"
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+
+class DatabaseCursor:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def execute(self, query, params=None):
+        query = re.sub(r"\?", "%s", query)
+        self._cursor.execute(query, params)
+        return self
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+
+class DatabaseConnection:
+    def __init__(self):
+        if not DATABASE_URL:
+            raise RuntimeError(
+                "Brak zmiennej DATABASE_URL."
+            )
+        self._connection = psycopg2.connect(DATABASE_URL)
+
+    def cursor(self):
+        return DatabaseCursor(self._connection.cursor())
+
+    def commit(self):
+        self._connection.commit()
+
+    def close(self):
+        self._connection.close()
+
+
+def get_connection():
+    return DatabaseConnection()
 
 
 def create_database():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS analyses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT,
             date TEXT,
             score REAL,
@@ -21,36 +66,18 @@ def create_database():
         )
     """)
 
-    cursor.execute("PRAGMA table_info(analyses)")
-
-    columns = {
-        row[1]
-        for row in cursor.fetchall()
-    }
-
-    if "job_title" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE analyses
-            ADD COLUMN job_title TEXT DEFAULT ''
-            """
-        )
-
-    if "missing_skills" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE analyses
-            ADD COLUMN missing_skills TEXT DEFAULT ''
-            """
-        )
-
-    if "cv_version" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE analyses
-            ADD COLUMN cv_version TEXT DEFAULT ''
-            """
-        )
+    cursor.execute(
+        "ALTER TABLE analyses "
+        "ADD COLUMN IF NOT EXISTS job_title TEXT DEFAULT ''"
+    )
+    cursor.execute(
+        "ALTER TABLE analyses "
+        "ADD COLUMN IF NOT EXISTS missing_skills TEXT DEFAULT ''"
+    )
+    cursor.execute(
+        "ALTER TABLE analyses "
+        "ADD COLUMN IF NOT EXISTS cv_version TEXT DEFAULT ''"
+    )
 
     connection.commit()
     connection.close()
@@ -69,7 +96,7 @@ def save_analysis(
     if missing_skills is None:
         missing_skills = []
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -102,7 +129,7 @@ def save_analysis(
 
 
 def get_history(username):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -122,7 +149,7 @@ def get_history(username):
 
 
 def get_history_with_title(username):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -149,7 +176,7 @@ def get_history_with_title(username):
 
 
 def get_statistics(username):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -168,7 +195,7 @@ def get_statistics(username):
 
 
 def get_progress(username):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -188,7 +215,7 @@ def get_progress(username):
 
 
 def delete_analysis(analysis_id):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -204,7 +231,7 @@ def delete_analysis(analysis_id):
 
 
 def get_better_than_percentage(username, score):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -240,12 +267,12 @@ def get_better_than_percentage(username, score):
 
 
 def create_learning_plan_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS learning_plan (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             skill TEXT NOT NULL,
             priority TEXT NOT NULL DEFAULT 'Średni',
@@ -290,7 +317,7 @@ def _get_skill_priority(skill):
 def add_skills_to_learning_plan(username, skills):
     create_learning_plan_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -303,7 +330,7 @@ def add_skills_to_learning_plan(username, skills):
 
         cursor.execute(
             """
-            INSERT OR IGNORE INTO learning_plan
+            INSERT INTO learning_plan
             (
                 username,
                 skill,
@@ -313,6 +340,7 @@ def add_skills_to_learning_plan(username, skills):
                 updated_at
             )
             VALUES (?, ?, ?, 'Do nauki', ?, ?)
+            ON CONFLICT(username, skill) DO NOTHING
             """,
             (
                 username,
@@ -330,7 +358,7 @@ def add_skills_to_learning_plan(username, skills):
 def get_learning_plan(username):
     create_learning_plan_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -371,7 +399,7 @@ def update_learning_status(task_id, status):
     if status not in allowed_statuses:
         return
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -401,7 +429,7 @@ def update_learning_priority(task_id, priority):
     if priority not in allowed_priorities:
         return
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -422,7 +450,7 @@ def update_learning_priority(task_id, priority):
 
 
 def delete_learning_task(task_id):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -439,12 +467,12 @@ def delete_learning_task(task_id):
 
 
 def create_roadmap_progress_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS roadmap_progress (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             skill TEXT NOT NULL,
             step_number INTEGER NOT NULL,
@@ -461,7 +489,7 @@ def create_roadmap_progress_table():
 def get_roadmap_progress(username, skill):
     create_roadmap_progress_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -490,7 +518,7 @@ def update_roadmap_step(
 ):
     create_roadmap_progress_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -537,7 +565,7 @@ def update_learning_status_by_skill(
     if status not in allowed_statuses:
         return
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -560,12 +588,12 @@ def update_learning_status_by_skill(
 
 
 def create_weekly_goal_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS weekly_goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             target_steps INTEGER NOT NULL DEFAULT 5,
             start_completed_steps INTEGER NOT NULL DEFAULT 0,
@@ -581,7 +609,7 @@ def create_weekly_goal_table():
 def get_total_completed_roadmap_steps(username):
     create_roadmap_progress_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -610,7 +638,7 @@ def save_weekly_goal(
         get_total_completed_roadmap_steps(username)
     )
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -647,7 +675,7 @@ def save_weekly_goal(
 def get_weekly_goal(username):
     create_weekly_goal_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -672,7 +700,7 @@ def get_weekly_goal(username):
 def delete_weekly_goal(username):
     create_weekly_goal_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -689,12 +717,12 @@ def delete_weekly_goal(username):
 
 
 def create_job_applications_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS job_applications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             company TEXT NOT NULL,
             position TEXT NOT NULL,
@@ -710,47 +738,21 @@ def create_job_applications_table():
     """)
 
     cursor.execute(
-        "PRAGMA table_info(job_applications)"
+        "ALTER TABLE job_applications "
+        "ADD COLUMN IF NOT EXISTS match_score REAL"
     )
-
-    columns = {
-        row[1]
-        for row in cursor.fetchall()
-    }
-
-    if "match_score" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE job_applications
-            ADD COLUMN match_score REAL
-            """
-        )
-
-
-    if "next_event_date" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE job_applications
-            ADD COLUMN next_event_date TEXT DEFAULT ''
-            """
-        )
-
-    if "next_event_type" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE job_applications
-            ADD COLUMN next_event_type TEXT DEFAULT ''
-            """
-        )
-
-
-    if "cv_version" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE job_applications
-            ADD COLUMN cv_version TEXT DEFAULT ''
-            """
-        )
+    cursor.execute(
+        "ALTER TABLE job_applications "
+        "ADD COLUMN IF NOT EXISTS next_event_date TEXT DEFAULT ''"
+    )
+    cursor.execute(
+        "ALTER TABLE job_applications "
+        "ADD COLUMN IF NOT EXISTS next_event_type TEXT DEFAULT ''"
+    )
+    cursor.execute(
+        "ALTER TABLE job_applications "
+        "ADD COLUMN IF NOT EXISTS cv_version TEXT DEFAULT ''"
+    )
 
     connection.commit()
     connection.close()
@@ -771,7 +773,7 @@ def add_job_application(
 ):
     create_job_applications_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -820,7 +822,7 @@ def add_job_application(
 def get_job_applications(username):
     create_job_applications_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -869,7 +871,7 @@ def update_job_application_status(
     if status not in allowed_statuses:
         return
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -893,7 +895,7 @@ def update_job_application_notes(
     application_id,
     notes
 ):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -914,7 +916,7 @@ def update_job_application_notes(
 
 
 def delete_job_application(application_id):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -935,7 +937,7 @@ def update_job_application_event(
     event_date,
     event_type
 ):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -965,7 +967,7 @@ def get_upcoming_application_events(
 ):
     create_job_applications_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1005,7 +1007,7 @@ def update_job_application(
     job_url,
     match_score=None
 ):
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1041,7 +1043,7 @@ def get_career_insights_data(username):
     create_learning_plan_table()
     create_job_applications_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1138,12 +1140,12 @@ def get_career_insights_data(username):
 
 
 def create_interview_prep_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS interview_prep (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             application_id INTEGER NOT NULL,
             item_key TEXT NOT NULL,
@@ -1165,7 +1167,7 @@ def save_interview_prep_item(
 ):
     create_interview_prep_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1203,7 +1205,7 @@ def get_interview_prep_data(
 ):
     create_interview_prep_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1229,12 +1231,12 @@ def get_interview_prep_data(
 
 
 def create_interview_feedback_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS interview_feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             application_id INTEGER NOT NULL,
             interview_date TEXT NOT NULL,
@@ -1271,7 +1273,7 @@ def save_interview_feedback(
 ):
     create_interview_feedback_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -1338,7 +1340,7 @@ def get_interview_feedback(
 ):
     create_interview_feedback_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1374,12 +1376,12 @@ def get_interview_feedback(
 
 
 def create_mock_interview_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mock_interview_answers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             application_id INTEGER NOT NULL,
             question_number INTEGER NOT NULL,
@@ -1393,21 +1395,9 @@ def create_mock_interview_table():
     """)
 
     cursor.execute(
-        "PRAGMA table_info(mock_interview_answers)"
+        "ALTER TABLE mock_interview_answers "
+        "ADD COLUMN IF NOT EXISTS feedback TEXT DEFAULT ''"
     )
-
-    columns = {
-        row[1]
-        for row in cursor.fetchall()
-    }
-
-    if "feedback" not in columns:
-        cursor.execute(
-            """
-            ALTER TABLE mock_interview_answers
-            ADD COLUMN feedback TEXT DEFAULT ''
-            """
-        )
 
     connection.commit()
     connection.close()
@@ -1424,7 +1414,7 @@ def save_mock_interview_answer(
 ):
     create_mock_interview_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1475,7 +1465,7 @@ def get_mock_interview_answers(
 ):
     create_mock_interview_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1516,7 +1506,7 @@ def reset_mock_interview(
 ):
     create_mock_interview_table()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1536,12 +1526,12 @@ def reset_mock_interview(
 
 
 def create_remember_tokens_table():
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS remember_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             token_hash TEXT NOT NULL UNIQUE,
             expires_at TEXT NOT NULL,
@@ -1568,7 +1558,7 @@ def create_remember_token(username, days=30):
     now = datetime.now()
     expires_at = now + timedelta(days=days)
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1623,7 +1613,7 @@ def validate_remember_token(raw_token):
         "%Y-%m-%d %H:%M:%S"
     )
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -1656,7 +1646,7 @@ def revoke_remember_token(raw_token):
         raw_token.encode("utf-8")
     ).hexdigest()
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(

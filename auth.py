@@ -1,19 +1,18 @@
-import sqlite3
 import bcrypt
+import psycopg2
 
-
-DATABASE_NAME = "history.db"
+from database import get_connection
 
 
 def create_users_table():
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id BIGSERIAL PRIMARY KEY,
 
             username TEXT UNIQUE,
 
@@ -28,7 +27,7 @@ def create_users_table():
 
 def register_user(username, password):
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     hashed_password = bcrypt.hashpw(
@@ -56,7 +55,7 @@ def register_user(username, password):
 
         success = True
 
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
 
         success = False
 
@@ -67,7 +66,7 @@ def register_user(username, password):
 
 def login_user(username, password):
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
@@ -114,7 +113,7 @@ def change_password(username, current_password, new_password):
         bcrypt.gensalt()
     )
 
-    connection = sqlite3.connect(DATABASE_NAME)
+    connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(

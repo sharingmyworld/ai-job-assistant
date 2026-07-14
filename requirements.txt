@@ -6,3 +6,4 @@ reportlab
 bcrypt
 pdfplumber
 python-dotenv
+psycopg2-binary
