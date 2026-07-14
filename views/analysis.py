@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import streamlit as st
 
 from core.analyzer import analyze_cv
@@ -42,13 +45,8 @@ def show_analysis():
         "✨ Wykryj stanowisko",
         key="detect_job_title_button"
     ):
-        detected_title = detect_job_title(
-            job_offer
-        )
-
-        st.session_state.detected_job_title = (
-            detected_title
-        )
+        detected_title = detect_job_title(job_offer)
+        st.session_state.detected_job_title = detected_title
 
         if detected_title:
             st.success(
@@ -92,34 +90,33 @@ def show_analysis():
             return
 
         if not job_offer.strip():
-            st.warning(
-                "Wklej ofertę pracy."
-            )
+            st.warning("Wklej ofertę pracy.")
             return
 
         final_job_title = job_title.strip()
 
         if not final_job_title:
-            final_job_title = detect_job_title(
-                job_offer
-            )
+            final_job_title = detect_job_title(job_offer)
 
         if not final_job_title:
-            final_job_title = (
-                "Bez nazwy stanowiska"
-            )
+            final_job_title = "Bez nazwy stanowiska"
 
-        with open(
-            "uploaded_cv.pdf",
-            "wb"
-        ) as file:
-            file.write(
-                uploaded_file.getbuffer()
-            )
+        temp_path = None
 
-        cv_text = read_pdf(
-            "uploaded_cv.pdf"
-        )
+        try:
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".pdf"
+            ) as temp_file:
+                temp_file.write(
+                    uploaded_file.getbuffer()
+                )
+                temp_path = temp_file.name
+
+            cv_text = read_pdf(temp_path)
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
 
         score, found, missing = analyze_cv(
             cv_text,
@@ -161,9 +158,7 @@ def show_analysis():
         st.session_state.suggestions = suggestions
         st.session_state.ats_result = ats_result
         st.session_state.ats_report = ats_report
-        st.session_state.detected_job_title = (
-            final_job_title
-        )
+        st.session_state.detected_job_title = final_job_title
         st.session_state.cv_version = cv_version
 
     if not st.session_state.analysis_done:
@@ -197,9 +192,7 @@ def show_analysis():
             key="add_analysis_to_applications"
         ):
             if not application_company.strip():
-                st.warning(
-                    "Podaj nazwę firmy."
-                )
+                st.warning("Podaj nazwę firmy.")
             else:
                 add_job_application(
                     st.session_state.username,
@@ -223,23 +216,13 @@ def show_analysis():
                 )
 
     st.divider()
-
-    show_skill_chart(
-        found,
-        missing
-    )
+    show_skill_chart(found, missing)
 
     st.divider()
-
-    show_found_skills_chart(
-        found
-    )
+    show_found_skills_chart(found)
 
     st.divider()
-
-    st.subheader(
-        "✅ Znalezione umiejętności"
-    )
+    st.subheader("✅ Znalezione umiejętności")
 
     if found:
         for skill in found:
@@ -249,9 +232,7 @@ def show_analysis():
             "Nie znaleziono pasujących umiejętności."
         )
 
-    st.subheader(
-        "❌ Brakujące umiejętności"
-    )
+    st.subheader("❌ Brakujące umiejętności")
 
     if missing:
         for skill in missing:
@@ -298,10 +279,7 @@ def show_analysis():
         )
 
     try:
-        with open(
-            "ATS_Report.pdf",
-            "rb"
-        ) as file:
+        with open("ATS_Report.pdf", "rb") as file:
             st.download_button(
                 "📥 Pobierz raport PDF",
                 data=file,

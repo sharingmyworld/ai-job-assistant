@@ -25,12 +25,21 @@ st.set_page_config(
 )
 
 
+cookie_password = os.environ.get(
+    "AI_JOB_COOKIE_PASSWORD"
+)
+
+if not cookie_password:
+    st.error(
+        "Brak zmiennej AI_JOB_COOKIE_PASSWORD. "
+        "Ustaw bezpieczny klucz przed uruchomieniem aplikacji."
+    )
+    st.stop()
+
+
 cookies = EncryptedCookieManager(
     prefix="ai_job_assistant/",
-    password=os.environ.get(
-        "AI_JOB_COOKIE_PASSWORD",
-        "local-development-change-this-key"
-    ),
+    password=cookie_password,
 )
 
 if not cookies.ready():
@@ -163,9 +172,9 @@ if not st.session_state.logged_in:
                 st.warning(
                     "Login musi mieć co najmniej 3 znaki."
                 )
-            elif len(new_password) < 4:
+            elif len(new_password) < 8:
                 st.warning(
-                    "Hasło musi mieć co najmniej 4 znaki."
+                    "Hasło musi mieć co najmniej 8 znaków."
                 )
             else:
                 success = register_user(
@@ -236,50 +245,40 @@ if st.sidebar.button("🚪 Wyloguj się"):
 
 if page == "🏠 Dashboard":
     from views.dashboard import show_dashboard
-
     show_dashboard()
 
 elif page == "📄 Analiza CV":
     from views.analysis import show_analysis
-
     show_analysis()
 
 elif page == "📚 Historia":
     from views.history import show_history
-
     show_history()
 
 elif page == "🎯 Plan nauki":
     from views.learning_plan import show_learning_plan
-
     show_learning_plan()
 
 elif page == "📨 Aplikacje":
     from views.applications import show_applications
-
     show_applications()
 
 elif page == "🧠 Career Insights":
     from views.career_insights import show_career_insights
-
     show_career_insights()
 
 elif page == "🗂️ Wersje CV":
     from views.cv_versions import show_cv_versions
-
     show_cv_versions()
 
 elif page == "🎤 Przygotowanie do rozmowy":
     from views.interview_prep import show_interview_prep
-
     show_interview_prep()
 
 elif page == "🎭 Mock Interview":
     from views.mock_interview import show_mock_interview
-
     show_mock_interview()
 
 elif page == "👤 Profil":
     from views.profile import show_profile
-
     show_profile()

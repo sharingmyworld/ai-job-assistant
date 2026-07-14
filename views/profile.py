@@ -61,10 +61,10 @@ def show_profile():
         "Zmień hasło"
     ):
 
-        if len(new_password) < 4:
+        if len(new_password) < 8:
 
             st.warning(
-                "Nowe hasło musi mieć co najmniej 4 znaki."
+                "Nowe hasło musi mieć co najmniej 8 znaków."
             )
 
         elif new_password != repeat_password:
