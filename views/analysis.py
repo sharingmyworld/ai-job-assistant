@@ -9,7 +9,8 @@ from cv_improver import generate_suggestions
 
 from database import (
     save_analysis,
-    add_skills_to_learning_plan
+    add_skills_to_learning_plan,
+    add_job_application
 )
 from job_title_detector import detect_job_title
 
@@ -174,6 +175,40 @@ def show_analysis():
         "Dopasowanie",
         f"{score:.1f}%"
     )
+
+    with st.expander(
+        "📨 Dodaj tę ofertę do trackera aplikacji"
+    ):
+        application_company = st.text_input(
+            "Firma",
+            key="analysis_application_company"
+        )
+
+        if st.button(
+            "📨 Dodaj do aplikacji",
+            key="add_analysis_to_applications"
+        ):
+            if not application_company.strip():
+                st.warning(
+                    "Podaj nazwę firmy."
+                )
+            else:
+                add_job_application(
+                    st.session_state.username,
+                    application_company,
+                    st.session_state.detected_job_title,
+                    "Planowana",
+                    __import__("datetime").date.today().isoformat(),
+                    notes=(
+                        f"Dodano z analizy CV. "
+                        f"Dopasowanie: {score:.1f}%."
+                    ),
+                    match_score=score
+                )
+
+                st.success(
+                    "Oferta została dodana do trackera aplikacji."
+                )
 
     st.divider()
 

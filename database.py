@@ -673,3 +673,205 @@ def delete_weekly_goal(username):
 
     connection.commit()
     connection.close()
+
+
+
+def create_job_applications_table():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS job_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            company TEXT NOT NULL,
+            position TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Planowana',
+            application_date TEXT NOT NULL,
+            job_url TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+
+    cursor.execute(
+        "PRAGMA table_info(job_applications)"
+    )
+
+    columns = {
+        row[1]
+        for row in cursor.fetchall()
+    }
+
+    if "match_score" not in columns:
+        cursor.execute(
+            """
+            ALTER TABLE job_applications
+            ADD COLUMN match_score REAL
+            """
+        )
+
+    connection.commit()
+    connection.close()
+
+
+def add_job_application(
+    username,
+    company,
+    position,
+    status,
+    application_date,
+    job_url="",
+    notes="",
+    match_score=None
+):
+    create_job_applications_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    cursor.execute(
+        """
+        INSERT INTO job_applications
+        (
+            username,
+            company,
+            position,
+            status,
+            application_date,
+            job_url,
+            notes,
+            created_at,
+            updated_at,
+            match_score
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            username,
+            company.strip(),
+            position.strip(),
+            status,
+            application_date,
+            job_url.strip(),
+            notes.strip(),
+            now,
+            now,
+            match_score
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_job_applications(username):
+    create_job_applications_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            company,
+            position,
+            status,
+            application_date,
+            job_url,
+            notes,
+            created_at,
+            updated_at,
+            match_score
+        FROM job_applications
+        WHERE username=?
+        ORDER BY application_date DESC, id DESC
+        """,
+        (username,)
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return rows
+
+
+def update_job_application_status(
+    application_id,
+    status
+):
+    allowed_statuses = {
+        "Planowana",
+        "Wysłana",
+        "Rozmowa HR",
+        "Rozmowa techniczna",
+        "Oferta",
+        "Odrzucona",
+        "Wycofana"
+    }
+
+    if status not in allowed_statuses:
+        return
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE job_applications
+        SET status=?, updated_at=?
+        WHERE id=?
+        """,
+        (
+            status,
+            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            application_id
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def update_job_application_notes(
+    application_id,
+    notes
+):
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE job_applications
+        SET notes=?, updated_at=?
+        WHERE id=?
+        """,
+        (
+            notes.strip(),
+            datetime.now().strftime("%Y-%m-%d %H:%M"),
+            application_id
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def delete_job_application(application_id):
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        DELETE FROM job_applications
+        WHERE id=?
+        """,
+        (application_id,)
+    )
+
+    connection.commit()
+    connection.close()
