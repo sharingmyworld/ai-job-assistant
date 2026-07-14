@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 
+from answer_evaluator import evaluate_answer
+
 from database import (
     get_job_applications,
     get_mock_interview_answers,
@@ -72,42 +74,6 @@ def _get_questions(position):
     )
 
     return list(dict.fromkeys(questions))[:8]
-
-
-def _score_answer(answer):
-    clean_answer = answer.strip()
-
-    if not clean_answer:
-        return 0
-
-    word_count = len(
-        clean_answer.split()
-    )
-
-    score = 1
-
-    if word_count >= 20:
-        score += 1
-
-    if word_count >= 50:
-        score += 1
-
-    if any(
-        marker in clean_answer.lower()
-        for marker in [
-            "przykład",
-            "projekt",
-            "sytuac",
-            "rezultat",
-            "wynik"
-        ]
-    ):
-        score += 1
-
-    if word_count >= 80:
-        score += 1
-
-    return min(score, 5)
 
 
 def show_mock_interview():
@@ -249,7 +215,8 @@ def show_mock_interview():
                     "Wpisz odpowiedź."
                 )
             else:
-                score = _score_answer(
+                score, feedback = evaluate_answer(
+                    question,
                     answer
                 )
 
@@ -259,8 +226,13 @@ def show_mock_interview():
                     question_number,
                     question,
                     answer,
-                    score
+                    score,
+                    feedback
                 )
+
+                st.session_state[
+                    f"mock_feedback_{application_id}"
+                ] = feedback
 
                 st.rerun()
     else:
@@ -328,9 +300,14 @@ def show_mock_interview():
                 )
 
                 st.caption(
-                    f"Ocena kompletności: "
+                    f"Ocena odpowiedzi: "
                     f"{item['score']}/5"
                 )
+
+                if item.get("feedback"):
+                    st.info(
+                        item["feedback"]
+                    )
 
                 st.divider()
 

@@ -1,11 +1,21 @@
+import os
 import streamlit as st
+
+from streamlit_cookies_manager import (
+    EncryptedCookieManager
+)
 
 from auth import (
     create_users_table,
     register_user,
     login_user,
 )
-from database import create_database
+from database import (
+    create_database,
+    create_remember_token,
+    validate_remember_token,
+    revoke_remember_token
+)
 
 
 st.set_page_config(
@@ -13,6 +23,18 @@ st.set_page_config(
     page_icon="🤖",
     layout="wide",
 )
+
+
+cookies = EncryptedCookieManager(
+    prefix="ai_job_assistant/",
+    password=os.environ.get(
+        "AI_JOB_COOKIE_PASSWORD",
+        "local-development-change-this-key"
+    ),
+)
+
+if not cookies.ready():
+    st.stop()
 
 
 create_database()
@@ -53,6 +75,22 @@ if "job_offer" not in st.session_state:
     st.session_state.job_offer = ""
 
 
+if not st.session_state.logged_in:
+    saved_token = cookies.get(
+        "remember_token"
+    )
+
+    remembered_username = validate_remember_token(
+        saved_token
+    )
+
+    if remembered_username:
+        st.session_state.logged_in = True
+        st.session_state.username = (
+            remembered_username
+        )
+
+
 st.title("🤖 AI Job Assistant")
 
 
@@ -78,10 +116,28 @@ if not st.session_state.logged_in:
             key="login_password",
         )
 
+        remember_me = st.checkbox(
+            "Nie wylogowuj mnie",
+            key="remember_me"
+        )
+
         if st.button("Zaloguj się"):
             if login_user(username, password):
                 st.session_state.logged_in = True
                 st.session_state.username = username
+
+                if remember_me:
+                    remember_token = (
+                        create_remember_token(
+                            username,
+                            days=30
+                        )
+                    )
+
+                    cookies[
+                        "remember_token"
+                    ] = remember_token
+                    cookies.save()
 
                 st.success(f"Witaj {username}!")
                 st.rerun()
@@ -159,6 +215,18 @@ page = st.sidebar.radio(
 st.sidebar.divider()
 
 if st.sidebar.button("🚪 Wyloguj się"):
+    saved_token = cookies.get(
+        "remember_token"
+    )
+
+    revoke_remember_token(
+        saved_token
+    )
+
+    if "remember_token" in cookies:
+        del cookies["remember_token"]
+        cookies.save()
+
     st.session_state.logged_in = False
     st.session_state.username = ""
     st.session_state.analysis_done = False
