@@ -4,6 +4,34 @@ import psycopg2
 from database import get_connection
 
 
+def _normalize_password_hash(value):
+    if isinstance(value, memoryview):
+        value = value.tobytes()
+
+    if isinstance(value, bytes):
+        # PostgreSQL BYTEA can sometimes be returned as hex text: b"\\x..."
+        if value.startswith(b"\\x"):
+            try:
+                value = bytes.fromhex(
+                    value[2:].decode("ascii")
+                )
+            except (ValueError, UnicodeDecodeError):
+                pass
+
+        return value
+
+    if isinstance(value, str):
+        if value.startswith("\\x"):
+            try:
+                return bytes.fromhex(value[2:])
+            except ValueError:
+                pass
+
+        return value.encode("utf-8")
+
+    return bytes(value)
+
+
 def create_users_table():
 
     connection = get_connection()
@@ -31,9 +59,9 @@ def register_user(username, password):
     cursor = connection.cursor()
 
     hashed_password = bcrypt.hashpw(
-        password.encode(),
+        password.encode("utf-8"),
         bcrypt.gensalt()
-    )
+    ).decode("utf-8")
 
     try:
 
@@ -91,17 +119,17 @@ def login_user(username, password):
 
         return False
 
-    stored_password = row[0]
-
-    if isinstance(stored_password, memoryview):
-        stored_password = stored_password.tobytes()
-    elif isinstance(stored_password, str):
-        stored_password = stored_password.encode("utf-8")
-
-    return bcrypt.checkpw(
-        password.encode("utf-8"),
-        stored_password
+    stored_password = _normalize_password_hash(
+        row[0]
     )
+
+    try:
+        return bcrypt.checkpw(
+            password.encode("utf-8"),
+            stored_password
+        )
+    except ValueError:
+        return False
 
 
 def change_password(username, current_password, new_password):
@@ -115,7 +143,7 @@ def change_password(username, current_password, new_password):
     hashed_password = bcrypt.hashpw(
         new_password.encode("utf-8"),
         bcrypt.gensalt()
-    )
+    ).decode("utf-8")
 
     connection = get_connection()
     cursor = connection.cursor()
