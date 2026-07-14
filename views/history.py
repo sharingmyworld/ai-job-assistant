@@ -33,7 +33,9 @@ def _format_analysis_label(row):
 
     return (
         f"#{int(row['ID'])} | {title} | "
-        f"{date_text} | {row['Wynik']:.0f}%"
+        f"{date_text} | "
+        f"{row['Wersja CV'] or 'Bez wersji'} | "
+        f"{row['Wynik']:.0f}%"
     )
 
 
@@ -281,7 +283,8 @@ def show_history():
             "Wynik",
             "Umiejętności",
             "Stanowisko",
-            "Brakujące"
+            "Brakujące",
+            "Wersja CV"
         ]
     )
 
@@ -451,6 +454,12 @@ def show_history():
             )
 
             st.subheader(f"💼 {title}")
+
+            if row["Wersja CV"]:
+                st.write(
+                    f"🗂️ Wersja CV: {row['Wersja CV']}"
+                )
+
             st.write(f"📅 {date_text}")
             st.write(
                 f"📊 Dopasowanie: "

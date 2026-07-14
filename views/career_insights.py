@@ -82,7 +82,7 @@ def show_career_insights():
 
     missing_counter = Counter()
 
-    for _, _, missing_text in analyses:
+    for _, _, missing_text, _ in analyses:
         missing_counter.update(
             skill.lower()
             for skill in _split_skills(missing_text)
@@ -130,7 +130,7 @@ def show_career_insights():
 
     title_scores = {}
 
-    for score, title, _ in analyses:
+    for score, title, _, _ in analyses:
         clean_title = (
             title.strip()
             if title and title.strip()
@@ -289,6 +289,61 @@ def show_career_insights():
     else:
         st.info(
             "Brak danych z trackera aplikacji."
+        )
+
+    st.divider()
+    st.subheader("🗂️ Skuteczność wersji CV")
+
+    version_scores = {}
+
+    for score, _, _, cv_version in analyses:
+        version_name = (
+            cv_version.strip()
+            if cv_version and cv_version.strip()
+            else "Bez nazwy wersji"
+        )
+
+        version_scores.setdefault(
+            version_name,
+            []
+        ).append(float(score))
+
+    if version_scores:
+        version_rows = [
+            {
+                "Wersja CV": version,
+                "Średnie dopasowanie": (
+                    sum(scores) / len(scores)
+                ),
+                "Liczba analiz": len(scores)
+            }
+            for version, scores in version_scores.items()
+        ]
+
+        version_df = pd.DataFrame(
+            version_rows
+        ).sort_values(
+            by="Średnie dopasowanie",
+            ascending=False
+        )
+
+        st.bar_chart(
+            version_df.set_index(
+                "Wersja CV"
+            )["Średnie dopasowanie"]
+        )
+
+        best_version = version_df.iloc[0]
+
+        st.success(
+            f"Najlepsza wersja CV to "
+            f"**{best_version['Wersja CV']}** "
+            f"ze średnim dopasowaniem "
+            f"{best_version['Średnie dopasowanie']:.1f}%."
+        )
+    else:
+        st.info(
+            "Brak danych o wersjach CV."
         )
 
     st.divider()

@@ -67,6 +67,12 @@ def show_analysis():
         key="analysis_job_title"
     )
 
+    cv_version = st.text_input(
+        "🗂️ Nazwa wersji CV",
+        placeholder="np. Python Developer v2",
+        key="analysis_cv_version"
+    )
+
     uploaded_file = st.file_uploader(
         "📄 Wybierz CV (PDF)",
         type=["pdf"],
@@ -139,7 +145,8 @@ def show_analysis():
             score,
             found,
             final_job_title,
-            missing
+            missing,
+            cv_version
         )
 
         add_skills_to_learning_plan(
@@ -157,6 +164,7 @@ def show_analysis():
         st.session_state.detected_job_title = (
             final_job_title
         )
+        st.session_state.cv_version = cv_version
 
     if not st.session_state.analysis_done:
         return
@@ -203,7 +211,11 @@ def show_analysis():
                         f"Dodano z analizy CV. "
                         f"Dopasowanie: {score:.1f}%."
                     ),
-                    match_score=score
+                    match_score=score,
+                    cv_version=st.session_state.get(
+                        "cv_version",
+                        ""
+                    )
                 )
 
                 st.success(

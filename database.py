@@ -44,6 +44,14 @@ def create_database():
             """
         )
 
+    if "cv_version" not in columns:
+        cursor.execute(
+            """
+            ALTER TABLE analyses
+            ADD COLUMN cv_version TEXT DEFAULT ''
+            """
+        )
+
     connection.commit()
     connection.close()
 
@@ -55,7 +63,8 @@ def save_analysis(
     score,
     skills,
     job_title="",
-    missing_skills=None
+    missing_skills=None,
+    cv_version=""
 ):
     if missing_skills is None:
         missing_skills = []
@@ -72,9 +81,10 @@ def save_analysis(
             score,
             skills,
             job_title,
-            missing_skills
+            missing_skills,
+            cv_version
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             username,
@@ -82,7 +92,8 @@ def save_analysis(
             score,
             ", ".join(skills),
             job_title.strip(),
-            ", ".join(missing_skills)
+            ", ".join(missing_skills),
+            cv_version.strip()
         )
     )
 
@@ -122,7 +133,8 @@ def get_history_with_title(username):
             score,
             skills,
             COALESCE(job_title, ''),
-            COALESCE(missing_skills, '')
+            COALESCE(missing_skills, ''),
+            COALESCE(cv_version, '')
         FROM analyses
         WHERE username=?
         ORDER BY id DESC
@@ -731,6 +743,15 @@ def create_job_applications_table():
             """
         )
 
+
+    if "cv_version" not in columns:
+        cursor.execute(
+            """
+            ALTER TABLE job_applications
+            ADD COLUMN cv_version TEXT DEFAULT ''
+            """
+        )
+
     connection.commit()
     connection.close()
 
@@ -745,7 +766,8 @@ def add_job_application(
     notes="",
     match_score=None,
     next_event_date="",
-    next_event_type=""
+    next_event_type="",
+    cv_version=""
 ):
     create_job_applications_table()
 
@@ -769,9 +791,10 @@ def add_job_application(
             updated_at,
             match_score,
             next_event_date,
-            next_event_type
+            next_event_type,
+            cv_version
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             username,
@@ -785,7 +808,8 @@ def add_job_application(
             now,
             match_score,
             next_event_date,
-            next_event_type
+            next_event_type,
+            cv_version.strip()
         )
     )
 
@@ -813,7 +837,8 @@ def get_job_applications(username):
             updated_at,
             match_score,
             COALESCE(next_event_date, ''),
-            COALESCE(next_event_type, '')
+            COALESCE(next_event_type, ''),
+            COALESCE(cv_version, '')
         FROM job_applications
         WHERE username=?
         ORDER BY application_date DESC, id DESC
@@ -1024,7 +1049,8 @@ def get_career_insights_data(username):
         SELECT
             score,
             COALESCE(job_title, ''),
-            COALESCE(missing_skills, '')
+            COALESCE(missing_skills, ''),
+            COALESCE(cv_version, '')
         FROM analyses
         WHERE username=?
         ORDER BY id DESC
@@ -1052,7 +1078,8 @@ def get_career_insights_data(username):
             company,
             position,
             status,
-            match_score
+            match_score,
+            COALESCE(cv_version, '')
         FROM job_applications
         WHERE username=?
         """,

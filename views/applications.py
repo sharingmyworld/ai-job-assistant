@@ -129,7 +129,8 @@ def show_applications():
             "Zaktualizowano",
             "Dopasowanie",
             "Termin wydarzenia",
-            "Typ wydarzenia"
+            "Typ wydarzenia",
+            "Wersja CV"
         ]
     )
 
@@ -477,6 +478,11 @@ def show_applications():
                 st.caption(
                     f"Data aplikacji: {row['Data aplikacji']}"
                 )
+
+                if row["Wersja CV"]:
+                    st.write(
+                        f"🗂️ Wersja CV: {row['Wersja CV']}"
+                    )
 
                 if pd.notna(row["Dopasowanie"]):
                     st.write(
