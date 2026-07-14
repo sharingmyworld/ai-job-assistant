@@ -50,8 +50,14 @@ if not cookies.ready():
     st.stop()
 
 
-create_database()
-create_users_table()
+@st.cache_resource
+def initialize_database():
+    create_database()
+    create_users_table()
+    return True
+
+
+initialize_database()
 
 
 if "logged_in" not in st.session_state:
