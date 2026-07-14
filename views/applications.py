@@ -28,6 +28,15 @@ STATUSES = [
     "Wycofana"
 ]
 
+@st.cache_data(ttl=20, show_spinner=False)
+def _load_applications(username):
+    return get_job_applications(username)
+
+
+def _clear_application_cache():
+    _load_applications.clear()
+
+
 
 def show_applications():
     st.header("📨 Tracker aplikacji")
@@ -103,9 +112,10 @@ def show_applications():
                 st.success(
                     "Aplikacja została zapisana."
                 )
+                _clear_application_cache()
                 st.rerun()
 
-    applications = get_job_applications(
+    applications = _load_applications(
         st.session_state.username
     )
 
@@ -498,6 +508,7 @@ def show_applications():
                     delete_job_application(
                         application_id
                     )
+                    _clear_application_cache()
                     st.rerun()
 
             with st.expander(
@@ -576,6 +587,7 @@ def show_applications():
                         st.success(
                             "Aplikacja została zaktualizowana."
                         )
+                        _clear_application_cache()
                         st.rerun()
 
             current_status = row["Status"]
@@ -594,6 +606,7 @@ def show_applications():
                     application_id,
                     new_status
                 )
+                _clear_application_cache()
                 st.rerun()
 
             if row["Link"]:
@@ -706,6 +719,7 @@ def show_applications():
                 st.success(
                     "Termin został zapisany."
                 )
+                _clear_application_cache()
                 st.rerun()
 
             updated_notes = st.text_area(
@@ -726,4 +740,5 @@ def show_applications():
                 st.success(
                     "Notatki zostały zapisane."
                 )
+                _clear_application_cache()
                 st.rerun()

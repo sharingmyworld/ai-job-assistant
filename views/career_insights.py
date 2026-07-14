@@ -5,6 +5,11 @@ from collections import Counter
 from database import get_career_insights_data
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def _load_career_insights(username):
+    return get_career_insights_data(username)
+
+
 def _split_skills(skills_text):
     if not skills_text:
         return []
@@ -24,7 +29,7 @@ def show_career_insights():
         "planu nauki i trackera aplikacji."
     )
 
-    data = get_career_insights_data(
+    data = _load_career_insights(
         st.session_state.username
     )
 

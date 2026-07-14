@@ -14,10 +14,48 @@ from database import (
 from learning_roadmaps import get_skill_roadmap
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_statistics(username):
+    return get_statistics(username)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_progress(username):
+    return get_progress(username)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_learning_plan(username):
+    return get_learning_plan(username)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_roadmap_progress(username, skill):
+    return get_roadmap_progress(username, skill)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_weekly_goal(username):
+    return get_weekly_goal(username)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_completed_steps(username):
+    return get_total_completed_roadmap_steps(username)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _cached_upcoming_events(username, limit):
+    return get_upcoming_application_events(
+        username,
+        limit=limit
+    )
+
+
 def show_dashboard():
     username = st.session_state.username
 
-    stats = get_statistics(username)
+    stats = _cached_statistics(username)
 
     count = stats[0] or 0
     average = stats[1] or 0
@@ -51,7 +89,7 @@ def show_dashboard():
             f"{best:.1f}%"
         )
 
-    progress = get_progress(username)
+    progress = _cached_progress(username)
 
     if len(progress) > 1:
         df = pd.DataFrame(
@@ -73,9 +111,9 @@ def show_dashboard():
         )
 
 
-    upcoming_events = get_upcoming_application_events(
+    upcoming_events = _cached_upcoming_events(
         username,
-        limit=5
+        5
     )
 
     if upcoming_events:
@@ -132,7 +170,7 @@ def show_dashboard():
 
     st.subheader("🎯 Postęp nauki")
 
-    tasks = get_learning_plan(username)
+    tasks = _cached_learning_plan(username)
 
     if not tasks:
         st.info(
@@ -248,7 +286,7 @@ def show_dashboard():
         )
 
 
-    weekly_goal = get_weekly_goal(username)
+    weekly_goal = _cached_weekly_goal(username)
 
     if weekly_goal:
         target_steps = weekly_goal[0]
@@ -256,7 +294,7 @@ def show_dashboard():
         deadline = weekly_goal[2]
 
         total_completed_steps = (
-            get_total_completed_roadmap_steps(
+            _cached_completed_steps(
                 username
             )
         )
@@ -305,7 +343,7 @@ def show_dashboard():
 
         roadmap = get_skill_roadmap(skill)
 
-        roadmap_progress = get_roadmap_progress(
+        roadmap_progress = _cached_roadmap_progress(
             username,
             skill
         )
