@@ -151,6 +151,7 @@ page = st.sidebar.radio(
         "🧠 Career Insights",
         "🗂️ Wersje CV",
         "🎤 Przygotowanie do rozmowy",
+        "🎭 Mock Interview",
         "👤 Profil",
     ],
 )
@@ -204,6 +205,11 @@ elif page == "🎤 Przygotowanie do rozmowy":
     from views.interview_prep import show_interview_prep
 
     show_interview_prep()
+
+elif page == "🎭 Mock Interview":
+    from views.mock_interview import show_mock_interview
+
+    show_mock_interview()
 
 elif page == "👤 Profil":
     from views.profile import show_profile

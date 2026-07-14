@@ -1350,3 +1350,141 @@ def get_interview_feedback(
     connection.close()
 
     return rows
+
+
+
+def create_mock_interview_table():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS mock_interview_answers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            application_id INTEGER NOT NULL,
+            question_number INTEGER NOT NULL,
+            question TEXT NOT NULL,
+            answer TEXT DEFAULT '',
+            score INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            UNIQUE(username, application_id, question_number)
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def save_mock_interview_answer(
+    username,
+    application_id,
+    question_number,
+    question,
+    answer,
+    score
+):
+    create_mock_interview_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO mock_interview_answers
+        (
+            username,
+            application_id,
+            question_number,
+            question,
+            answer,
+            score,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(
+            username,
+            application_id,
+            question_number
+        )
+        DO UPDATE SET
+            question=excluded.question,
+            answer=excluded.answer,
+            score=excluded.score,
+            updated_at=excluded.updated_at
+        """,
+        (
+            username,
+            application_id,
+            question_number,
+            question,
+            answer.strip(),
+            int(score),
+            datetime.now().strftime("%Y-%m-%d %H:%M")
+        )
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_mock_interview_answers(
+    username,
+    application_id
+):
+    create_mock_interview_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            question_number,
+            question,
+            answer,
+            score
+        FROM mock_interview_answers
+        WHERE username=? AND application_id=?
+        ORDER BY question_number
+        """,
+        (
+            username,
+            application_id
+        )
+    )
+
+    rows = cursor.fetchall()
+    connection.close()
+
+    return {
+        row[0]: {
+            "question": row[1],
+            "answer": row[2],
+            "score": row[3]
+        }
+        for row in rows
+    }
+
+
+def reset_mock_interview(
+    username,
+    application_id
+):
+    create_mock_interview_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        DELETE FROM mock_interview_answers
+        WHERE username=? AND application_id=?
+        """,
+        (
+            username,
+            application_id
+        )
+    )
+
+    connection.commit()
+    connection.close()
