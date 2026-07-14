@@ -148,6 +148,7 @@ page = st.sidebar.radio(
         "📚 Historia",
         "🎯 Plan nauki",
         "📨 Aplikacje",
+        "🧠 Career Insights",
         "👤 Profil",
     ],
 )
@@ -186,6 +187,11 @@ elif page == "📨 Aplikacje":
     from views.applications import show_applications
 
     show_applications()
+
+elif page == "🧠 Career Insights":
+    from views.career_insights import show_career_insights
+
+    show_career_insights()
 
 elif page == "👤 Profil":
     from views.profile import show_profile

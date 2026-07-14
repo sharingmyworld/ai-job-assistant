@@ -1008,3 +1008,62 @@ def update_job_application(
 
     connection.commit()
     connection.close()
+
+
+
+def get_career_insights_data(username):
+    create_database()
+    create_learning_plan_table()
+    create_job_applications_table()
+
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            score,
+            COALESCE(job_title, ''),
+            COALESCE(missing_skills, '')
+        FROM analyses
+        WHERE username=?
+        ORDER BY id DESC
+        """,
+        (username,)
+    )
+    analyses = cursor.fetchall()
+
+    cursor.execute(
+        """
+        SELECT
+            skill,
+            priority,
+            status
+        FROM learning_plan
+        WHERE username=?
+        """,
+        (username,)
+    )
+    learning_plan = cursor.fetchall()
+
+    cursor.execute(
+        """
+        SELECT
+            company,
+            position,
+            status,
+            match_score
+        FROM job_applications
+        WHERE username=?
+        """,
+        (username,)
+    )
+    applications = cursor.fetchall()
+
+    connection.close()
+
+    return {
+        "analyses": analyses,
+        "learning_plan": learning_plan,
+        "applications": applications
+    }
