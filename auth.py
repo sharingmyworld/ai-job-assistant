@@ -91,12 +91,16 @@ def login_user(username, password):
 
         return False
 
+    stored_password = row[0]
+
+    if isinstance(stored_password, memoryview):
+        stored_password = stored_password.tobytes()
+    elif isinstance(stored_password, str):
+        stored_password = stored_password.encode("utf-8")
+
     return bcrypt.checkpw(
-
-        password.encode(),
-
-        row[0]
-
+        password.encode("utf-8"),
+        stored_password
     )
 
 
