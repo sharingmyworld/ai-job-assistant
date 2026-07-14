@@ -3,4 +3,6 @@ streamlit-cookies-manager
 pandas
 altair
 reportlab
+bcrypt
+pdfplumber
 python-dotenv
