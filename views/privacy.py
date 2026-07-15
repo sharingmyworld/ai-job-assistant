@@ -106,8 +106,3 @@ Data ostatniej aktualizacji jest widoczna na początku dokumentu.
 """
     )
 
-    st.info(
-        "Ten dokument jest szablonem informacyjnym dla projektu. "
-        "Przed komercyjnym udostępnieniem aplikacji warto zlecić "
-        "jego weryfikację prawną."
-    )
