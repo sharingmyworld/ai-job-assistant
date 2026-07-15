@@ -2,8 +2,10 @@ import os
 
 import streamlit as st
 
+from i18n import get_language
 
-def show_privacy():
+
+def _show_privacy_pl():
     operator_name = os.environ.get(
         "PRIVACY_OPERATOR_NAME",
         "Operator aplikacji AI Job Assistant",
@@ -106,3 +108,49 @@ Data ostatniej aktualizacji jest widoczna na początku dokumentu.
 """
     )
 
+
+
+def show_privacy():
+    if get_language() != "en":
+        return _show_privacy_pl()
+
+    operator_name = os.environ.get("PRIVACY_OPERATOR_NAME", "AI Job Assistant operator")
+    contact_email = os.environ.get("PRIVACY_CONTACT_EMAIL", "contact-email-not-configured")
+
+    st.header("🔐 Privacy Policy")
+    st.caption("Last updated: July 2026")
+    st.markdown(f"""
+### 1. Data controller
+The controller of data processed in the application is **{operator_name}**.
+
+Privacy contact: **{contact_email}**.
+
+### 2. Data processed
+The application may process a username and bcrypt password hash, CV content during analysis, job application information, analysis and ATS results, learning progress, interview notes and feedback, and technical tokens required for persistent login.
+
+CV files are processed temporarily during analysis and are not stored as permanent files in the application database.
+
+### 3. Purpose of processing
+Data is used to provide the application's features, including CV analysis, history, application tracking, learning planning, interview preparation, and user statistics.
+
+### 4. Voluntary provision of data
+Providing data is voluntary, although some information is required to create an account and use selected features.
+
+### 5. Data retention
+Data is stored until deleted by the user or until the account is deleted. The Profile view provides JSON export and permanent account deletion.
+
+### 6. Infrastructure providers
+The application uses Streamlit Community Cloud for hosting, Supabase for PostgreSQL storage, and GitHub for source-code hosting. Secrets and user data should not be stored in the source-code repository.
+
+### 7. User rights
+Users can access their data through JSON export, update data through available forms, delete their account and associated data, contact the controller regarding privacy, and submit a complaint to the competent data-protection authority.
+
+### 8. Security
+Passwords are stored as bcrypt hashes. Connection credentials and secrets are stored outside the source code in environment configuration.
+
+### 9. Automated decisions
+CV match, ATS, and Mock Interview results are assistive only. They do not constitute recruitment decisions or professional advice and do not produce legal effects for the user.
+
+### 10. Policy changes
+This policy may be updated as the application evolves. The latest update date is shown at the top of this document.
+""")

@@ -2,6 +2,7 @@ import logging
 import os
 import streamlit as st
 from dotenv import load_dotenv
+from i18n import install_i18n
 
 load_dotenv()
 
@@ -32,6 +33,18 @@ st.set_page_config(
     page_icon="🤖",
     layout="wide",
 )
+
+if "language" not in st.session_state:
+    st.session_state.language = "en"
+
+language_label = st.sidebar.selectbox(
+    "🌐 Language",
+    ["🇵🇱 Polish", "🇬🇧 English"],
+    index=0 if st.session_state.language == "pl" else 1,
+    key="language_selector",
+)
+st.session_state.language = "en" if language_label == "🇬🇧 English" else "pl"
+install_i18n()
 
 
 cookie_password = os.environ.get(
