@@ -4,10 +4,11 @@ from datetime import datetime
 import streamlit as st
 
 from database import (
+    delete_user_account,
     export_user_data,
     get_statistics,
 )
-from auth import change_password
+from auth import change_password, login_user
 
 
 def show_profile():
@@ -136,3 +137,64 @@ def show_profile():
                 st.success(message)
             else:
                 st.error(message)
+
+
+    st.divider()
+    st.subheader("⚠️ Strefa niebezpieczna")
+
+    st.warning(
+        "Usunięcie konta jest trwałe. Zostaną usunięte "
+        "analizy CV, plan nauki, aplikacje oraz dane rozmów."
+    )
+
+    confirm_delete = st.checkbox(
+        "Rozumiem, że tej operacji nie można cofnąć.",
+        key="confirm_account_delete",
+    )
+
+    delete_password = st.text_input(
+        "Potwierdź hasłem",
+        type="password",
+        key="delete_account_password",
+    )
+
+    delete_phrase = st.text_input(
+        "Wpisz USUŃ KONTO",
+        key="delete_account_phrase",
+    )
+
+    if st.button(
+        "🗑️ Usuń konto i wszystkie dane",
+        type="primary",
+        key="delete_account_button",
+    ):
+        if not confirm_delete:
+            st.warning(
+                "Potwierdź, że rozumiesz skutki usunięcia konta."
+            )
+        elif delete_phrase.strip() != "USUŃ KONTO":
+            st.warning("Wpisz dokładnie: USUŃ KONTO")
+        elif not login_user(username, delete_password):
+            st.error("Nieprawidłowe hasło.")
+        else:
+            try:
+                delete_user_account(username)
+
+                st.session_state.logged_in = False
+                st.session_state.username = ""
+                st.session_state.analysis_done = False
+                st.session_state.score = 0
+                st.session_state.found = []
+                st.session_state.missing = []
+                st.session_state.suggestions = []
+                st.session_state.ats_result = {}
+                st.session_state.ats_report = []
+                st.session_state.cv_text = ""
+                st.session_state.job_offer = ""
+                st.session_state.account_deleted = True
+                st.rerun()
+            except Exception:
+                st.error(
+                    "Nie udało się usunąć konta. "
+                    "Spróbuj ponownie później."
+                )

@@ -94,6 +94,19 @@ if "job_offer" not in st.session_state:
     st.session_state.job_offer = ""
 
 
+if st.session_state.pop(
+    "account_deleted",
+    False
+):
+    if "remember_token" in cookies:
+        del cookies["remember_token"]
+        cookies.save()
+
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.session_state.account_deleted_message = True
+
+
 if not st.session_state.logged_in:
     saved_token = cookies.get(
         "remember_token"
@@ -114,6 +127,14 @@ st.title("🤖 AI Job Assistant")
 
 
 if not st.session_state.logged_in:
+    if st.session_state.pop(
+        "account_deleted_message",
+        False
+    ):
+        st.success(
+            "Konto i wszystkie dane zostały trwale usunięte."
+        )
+
     st.header("🔐 Logowanie")
 
     tab_login, tab_register = st.tabs(
