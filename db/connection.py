@@ -4,10 +4,15 @@ from datetime import datetime
 from threading import Lock
 
 import psycopg2
+from psycopg2 import OperationalError, InterfaceError
 from psycopg2.pool import ThreadedConnectionPool
 
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
+
+class DatabaseUnavailableError(RuntimeError):
+    """Raised when PostgreSQL is temporarily unavailable."""
 
 _pool = None
 _pool_lock = Lock()
@@ -97,4 +102,28 @@ class DatabaseConnection:
 
 
 def get_connection():
-    return DatabaseConnection()
+    last_error = None
+
+    for _ in range(2):
+        try:
+            return DatabaseConnection()
+        except (OperationalError, InterfaceError) as error:
+            last_error = error
+            reset_connection_pool()
+
+    raise DatabaseUnavailableError(
+        "Baza danych jest chwilowo niedostępna."
+    ) from last_error
+
+
+def reset_connection_pool():
+    global _pool
+
+    with _pool_lock:
+        if _pool is not None:
+            try:
+                _pool.closeall()
+            except Exception:
+                pass
+
+            _pool = None

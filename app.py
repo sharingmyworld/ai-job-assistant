@@ -1,3 +1,4 @@
+import logging
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -19,6 +20,10 @@ from database import (
     create_remember_token,
     validate_remember_token,
     revoke_remember_token
+)
+from db.connection import (
+    DatabaseUnavailableError,
+    reset_connection_pool,
 )
 
 
@@ -57,7 +62,21 @@ def initialize_database():
     return True
 
 
-initialize_database()
+try:
+    initialize_database()
+except DatabaseUnavailableError:
+    logging.exception("Database unavailable during startup")
+    st.error(
+        "Baza danych jest chwilowo niedostępna. "
+        "Twoje dane nie zostały utracone."
+    )
+
+    if st.button("🔄 Spróbuj ponownie", key="retry_database_startup"):
+        reset_connection_pool()
+        initialize_database.clear()
+        st.rerun()
+
+    st.stop()
 
 
 if "logged_in" not in st.session_state:
@@ -112,9 +131,12 @@ if not st.session_state.logged_in:
         "remember_token"
     )
 
-    remembered_username = validate_remember_token(
-        saved_token
-    )
+    try:
+        remembered_username = validate_remember_token(
+            saved_token
+        )
+    except DatabaseUnavailableError:
+        remembered_username = None
 
     if remembered_username:
         st.session_state.logged_in = True
@@ -274,42 +296,53 @@ if st.sidebar.button("🚪 Wyloguj się"):
     st.rerun()
 
 
-if page == "🏠 Dashboard":
-    from views.dashboard import show_dashboard
-    show_dashboard()
+try:
+    if page == "🏠 Dashboard":
+        from views.dashboard import show_dashboard
+        show_dashboard()
 
-elif page == "📄 Analiza CV":
-    from views.analysis import show_analysis
-    show_analysis()
+    elif page == "📄 Analiza CV":
+        from views.analysis import show_analysis
+        show_analysis()
 
-elif page == "📚 Historia":
-    from views.history import show_history
-    show_history()
+    elif page == "📚 Historia":
+        from views.history import show_history
+        show_history()
 
-elif page == "🎯 Plan nauki":
-    from views.learning_plan import show_learning_plan
-    show_learning_plan()
+    elif page == "🎯 Plan nauki":
+        from views.learning_plan import show_learning_plan
+        show_learning_plan()
 
-elif page == "📨 Aplikacje":
-    from views.applications import show_applications
-    show_applications()
+    elif page == "📨 Aplikacje":
+        from views.applications import show_applications
+        show_applications()
 
-elif page == "🧠 Career Insights":
-    from views.career_insights import show_career_insights
-    show_career_insights()
+    elif page == "🧠 Career Insights":
+        from views.career_insights import show_career_insights
+        show_career_insights()
 
-elif page == "🗂️ Wersje CV":
-    from views.cv_versions import show_cv_versions
-    show_cv_versions()
+    elif page == "🗂️ Wersje CV":
+        from views.cv_versions import show_cv_versions
+        show_cv_versions()
 
-elif page == "🎤 Przygotowanie do rozmowy":
-    from views.interview_prep import show_interview_prep
-    show_interview_prep()
+    elif page == "🎤 Przygotowanie do rozmowy":
+        from views.interview_prep import show_interview_prep
+        show_interview_prep()
 
-elif page == "🎭 Mock Interview":
-    from views.mock_interview import show_mock_interview
-    show_mock_interview()
+    elif page == "🎭 Mock Interview":
+        from views.mock_interview import show_mock_interview
+        show_mock_interview()
 
-elif page == "👤 Profil":
-    from views.profile import show_profile
-    show_profile()
+    elif page == "👤 Profil":
+        from views.profile import show_profile
+        show_profile()
+except DatabaseUnavailableError:
+    logging.exception("Database unavailable while rendering page")
+    st.error(
+        "Nie udało się połączyć z bazą danych. "
+        "Spróbuj ponownie za chwilę."
+    )
+
+    if st.button("🔄 Spróbuj ponownie", key="retry_database_page"):
+        reset_connection_pool()
+        st.rerun()
