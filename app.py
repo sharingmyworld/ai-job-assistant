@@ -220,8 +220,23 @@ if not st.session_state.logged_in:
             key="register_password",
         )
 
+        privacy_acknowledged = st.checkbox(
+            "Zapoznałem(-am) się z Polityką prywatności.",
+            key="register_privacy_acknowledged",
+        )
+
+        st.caption(
+            "Politykę prywatności znajdziesz w menu po zalogowaniu "
+            "oraz pod adresem aplikacji w sekcji „Polityka prywatności”."
+        )
+
         if st.button("Utwórz konto"):
-            if len(new_username.strip()) < 3:
+            if not privacy_acknowledged:
+                st.warning(
+                    "Przed utworzeniem konta zapoznaj się "
+                    "z Polityką prywatności."
+                )
+            elif len(new_username.strip()) < 3:
                 st.warning(
                     "Login musi mieć co najmniej 3 znaki."
                 )
@@ -271,6 +286,7 @@ page = st.sidebar.radio(
         "🎤 Przygotowanie do rozmowy",
         "🎭 Mock Interview",
         "👤 Profil",
+        "🔐 Polityka prywatności",
     ],
 )
 
@@ -336,6 +352,10 @@ try:
     elif page == "👤 Profil":
         from views.profile import show_profile
         show_profile()
+
+    elif page == "🔐 Polityka prywatności":
+        from views.privacy import show_privacy
+        show_privacy()
 except DatabaseUnavailableError:
     logging.exception("Database unavailable while rendering page")
     st.error(
